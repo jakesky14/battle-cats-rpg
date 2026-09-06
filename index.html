@@ -119,6 +119,7 @@
   #titleScreen, #cutsceneScreen, #menuScreen {
     position: absolute;
     inset: 4px;
+    z-index: 10;
     display: none;
     flex-direction: column;
     align-items: center;
@@ -385,7 +386,7 @@ const CUTSCENE_LINES = [
 let screen = 'title'; // 'title' | 'cutscene' | 'game'
 let cutsceneIndex = 0;
 
-let player, enemy, telegraphs, particles, loot, toasts, gameOver;
+let player = null, enemy = null, telegraphs = [], particles = [], loot = [], toasts = [], gameOver = false;
 let menuOpen = false, menuTab = 'map';
 let frozenMessage = null;
 let tutorialFlags = { spot: false, dash: false };
@@ -565,7 +566,7 @@ function doUpdate(dt) {
   }
 
   if (frozenMessage) {
-    if (justPressedEnter()) frozenMessage = null;
+    // Dismissed via the OK button's onclick handler (see syncOverlays), not a key command.
     return;
   }
 
@@ -705,8 +706,10 @@ function syncOverlays() {
     msgEl.classList.remove('msg-clickable');
     msgEl.classList.add('msg-tutorial');
     msgEl.style.color = '#ffe27a';
-    msgEl.innerHTML = frozenMessage + '<div class="msg-sub">Press any key (or click) to continue</div>';
+    msgEl.innerHTML = frozenMessage + '<div class="msg-sub"><button id="tutorialOkBtn" class="upgrade-btn">OK</button></div>';
     msgEl.style.display = 'block';
+    const okBtn = document.getElementById('tutorialOkBtn');
+    if (okBtn) okBtn.onclick = () => { frozenMessage = null; };
   } else {
     msgEl.style.display = 'none';
   }
