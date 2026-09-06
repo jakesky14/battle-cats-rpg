@@ -181,6 +181,25 @@
   .menu-hint { text-align: center; font-size: 11px; opacity: 0.6; padding: 10px; }
   .item-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; }
   .item-swatch { width: 18px; height: 18px; border-radius: 50%; display: inline-block; }
+
+  #dialogueBox {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    background: #000c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 14px 18px;
+    box-sizing: border-box;
+    display: none;
+    cursor: pointer;
+    z-index: 12;
+  }
+  #dialogueName { font-weight: bold; color: #ffd35c; margin-bottom: 6px; font-size: 14px; }
+  #dialogueText { font-size: 15px; line-height: 1.4; min-height: 40px; }
+  #dialogueText .dialogue-small { font-size: 11px; opacity: 0.8; }
+  #dialogueBox .prompt { display: block; margin-top: 8px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -198,7 +217,12 @@
   </div>
   <div id="toasts"></div>
   <div id="msg"></div>
-  <div id="instructions">Arrow keys move · Space attack · Left Shift dash · Right Shift (or M) menu · R restart</div>
+  <div id="dialogueBox">
+    <div id="dialogueName"></div>
+    <div id="dialogueText"></div>
+    <div class="prompt">Press Enter (or click) to continue ▸</div>
+  </div>
+  <div id="instructions">Arrow keys move · Space attack · Left Shift dash · Right Shift (or M) menu · Enter talk · R restart</div>
 
   <div id="titleScreen" style="cursor:pointer;">
     <h1>Battle Cats: The Legend of Behemoth Island</h1>
@@ -234,13 +258,16 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false; // keep the pixel-art sprites crisp when scaled
 const W = canvas.width, H = canvas.height;
 
-// Pixel-exact crops of the provided sprite sheet (23x24 cat, 20x24 egg).
+// Pixel-exact crops of the provided sprite sheets.
 const CAT_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABcAAAAYCAYAAAARfGZ1AAAA+0lEQVR4nLVUQRKDMAgsmb7NU57Lyc/RwQa7UkhitTvjiLhsABF6zEECH42CqCNGZjPzF6HWivHI31EiYZEtUcmEFc0vjj8U39AChujxfCkH5rIsQ/F1XVNNFE9bcAb4LbqZ/4g489k+90D0SbrcKazAyaE7hX0FZYZ0xo8YiktS1Uy1Q/ErmBan1oaZduwx0WwLlKxi9pzZ2aFPM/DvpEbUYL3wGW3kYnz7S988Zt62G2xCMZ/BbO9DLsbrPcy8wsnYKt8K5EZ7aRdHcCP6Q6Lx6y07nRaKMj0DjUcN24w2ipcP4GO1/1+5xb+xvkJ/lZxdEb8LY81WkfJfyym5b8enBc8AAAAASUVORK5CYII=';
 const EGG_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAYCAYAAAD6S912AAABG0lEQVR4nGNkwA/+4xBnZCBVgoGB4b/SRh+Gwz/1MCSkw9pw6mXCZdiKZ7IMVSs/YEhs33CI4emqKrAaYg38D3JZ1Wl9MMeW/RKKYZ4BdmA2LkMZ0Q2DKgQbBPIuyBAYgBmGz/uM2AwjFUgjGYorDMkGTJS6Dj08qe5CRkpdhx6WVHchCzUMsUVKq2Avz4mywZrGCAHkNMrT85AhQuoxxMsgw5AliTUMpK8tXABs2JcSebA4PAxJMRRmGMyrVaf1wYaiGEisocj5GQQO/9QDY9sjsZgGEjIUZhhMHlvRxoJNIy5DYS6DyWOLSBZ0AVgpQyjWccmzIBtEDcCIUkKf1scaLqQUYUwwg0GJklyAXB5ilNhkmomvsqMMAAAuznzm4bu9lwAAAABJRU5ErkJggg==';
 // The two enemy frames in the source sheet are an exact horizontal mirror of
 // each other, so only one (17x21) is embedded; the other facing is drawn via
 // a canvas flip, same as the player sprite.
 const ENEMY_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAVCAYAAACg/AXsAAAAqElEQVR4nK2TgQrAIAhENfb/v3xjLcHqTAc7iLa6niYpwoUxsrWuFkAE6H5ka0fIF5D6H++VmjSCYETLCfoyGgPou7maWbQ+0ZrAgZ45y2yD6DhsB22OsqEQBFFP2Rh+c+BDca+1mDhFdFfyvgcSHlZSVOqzPRYZAdjv2XUMNj0yPb+Neu9U9QtE3Xe5Ll6+JuWmE6I0k4qmmqz9MoKsg/km2WqW1eS7AfxYcO1A5plKAAAAAElFTkSuQmCC';
+// Cinnabar Egg N101 (post level-5 evolution form).
+const CINNABAR_EGG_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAXCAYAAAALHW+jAAABHElEQVR4nK2UMQ7CMAxF7bQSd2BgZWXjGD1BVjYuwIKQuARdu7FxDI7AigR3YKiCQuviunEaKv5SJbVfvt3UCHE5ZR/h1xcA4Fx1CSfZQs01MVhp94MXfq89yKUCnebMwzbVoQlSoDgG4y4J5lXf7pAtF4PyUcIokJ48WcJCUMPdyERN8kAuw91RYIo4zLF+5logh6e4JqH2VWM91IS2UO/hZJl/A9GXfIJV746lSt5RtEXzUfyC/wWpMB5ftvCuZIJOgXnRutfDFOhYJUZuxKApbclDCRqUYBJcs3savNiak9B+zQZFftx+SyZHsbK4c3pmYlDQ+Pq4fM6uMH+toz2SMbSmEdabh4/zrluEwD5ZisO4ww4ataer47wB0xm2aF9FdrsAAAAASUVORK5CYII=';
+
 const catSpriteImg = new Image();
 catSpriteImg.src = CAT_SPRITE_SRC;
 const eggSpriteImg = new Image();
@@ -263,12 +290,16 @@ const cutsceneScreenEl = document.getElementById('cutsceneScreen');
 const cutsceneLineEl = document.getElementById('cutsceneLine');
 const menuScreenEl = document.getElementById('menuScreen');
 const menuContentEl = document.getElementById('menuContent');
+const dialogueBoxEl = document.getElementById('dialogueBox');
+const dialogueNameEl = document.getElementById('dialogueName');
+const dialogueTextEl = document.getElementById('dialogueText');
 
 // Raw "speed" stats are small design units, not pixels/sec on their own.
 // This converts them to a workable on-screen pace; tune freely.
 const SPEED_SCALE = 10;
 // Fixed cosmetic wind-up so the red telegraph circle is visible before a hit lands.
 const ATK_WINDUP = 0.2;
+const INTERACT_RANGE = 60;
 
 // Each zone is its own continuously-scrolling world (camera follows the
 // player within it). Crossing an exit rect warps to a connected zone at a
@@ -286,21 +317,65 @@ const ZONES = {
       { x: 300, y: 800, w: 40, h: 250 },
       { x: 1500, y: 850, w: 150, h: 150 },
     ],
-    enemySpawn: { x: 760, y: 300 },
+    enemySpawns: [
+      { x: 760, y: 300 },
+    ],
+    npcs: [],
     exits: [
-      { x: 1890, y: 220, w: 30, h: 200, toZone: 'fields', toX: 90, toY: 320, label: '→ Fields' },
+      { x: 1890, y: 220, w: 30, h: 200, toZone: 'campsite', toX: 610, toY: 600, label: '→ Campsite' },
     ],
   },
-  fields: {
-    name: 'Fields',
-    worldW: 1400, worldH: 900,
+  campsite: {
+    name: 'Campsite',
+    worldW: 1700, worldH: 800,
     walls: [
-      { x: 600, y: 300, w: 200, h: 40 },
-      { x: 900, y: 600, w: 40, h: 200 },
+      // pocket that the player arrives into from Behemoth Outpost
+      { x: 520, y: 500, w: 20, h: 300 },
+      { x: 700, y: 500, w: 20, h: 300 },
+      // tents (also solid obstacles) — the leftmost hides Cat Biologist behind it
+      { x: 150, y: 150, w: 80, h: 100, visual: 'tent' },
+      { x: 260, y: 150, w: 80, h: 100, visual: 'tent' },
+      { x: 370, y: 150, w: 80, h: 100, visual: 'tent' },
+      // obstacles guarding the path back to camp
+      { x: 850, y: 200, w: 30, h: 150 },
+      { x: 1050, y: 150, w: 120, h: 30 },
+      { x: 1300, y: 180, w: 20, h: 250 },
+      { x: 1260, y: 420, w: 100, h: 20 },
     ],
-    enemySpawn: null,
+    campfire: { x: 300, y: 300 },
+    enemySpawns: [
+      { x: 610, y: 650 },
+      { x: 905, y: 300 },
+      { x: 1080, y: 250 },
+      { x: 1270, y: 300 },
+      { x: 1350, y: 320 },
+    ],
+    npcs: [
+      {
+        id: 'explorer', name: 'Cat Explorer', x: 350, y: 310,
+        lines: () => [{ text: "Nice Discovery! Our Biologist is somewhere around the campsite." }],
+      },
+      {
+        id: 'fisherman', name: 'Cat Fisherman', x: 250, y: 310,
+        lines: () => [
+          { text: "Looking for the Biologist?" },
+          { text: "...........................................................", slow: true },
+          { text: "No Clue where he is." },
+        ],
+      },
+      {
+        id: 'biologist', name: 'Cat Biologist', x: 190, y: 100,
+        lines: () => getEggStage() === 'ancient'
+          ? [{ text: "Interesting egg. It seems that the egg needs to be upgraded with XP! Defeat more Doges to gain some!" }]
+          : [
+              { text: "Amazing! The egg transformed itself into a new reddish pink color after recieving enough XP, " },
+              { text: "hmm.. What could be next for this egg? what will it look like when hatched? Will it mantain its color or change again! This is a next level discovery, I should write this in my notebook. Note to self: Maybe it will chnage color after even more XP, or maybe after a Behemoth stone is used.", small: true },
+              { text: " Anyways! You should find more Behemoth stones, they might be the key to another form!" },
+            ],
+      },
+    ],
     exits: [
-      { x: 0, y: 220, w: 30, h: 200, toZone: 'start', toX: 1820, toY: 320, label: '← Behemoth Outpost' },
+      { x: 560, y: 770, w: 140, h: 25, toZone: 'start', toX: 1820, toY: 320, label: '← Behemoth Outpost' },
     ],
   },
 };
@@ -335,6 +410,12 @@ function justPressed(code) { return keys[code] && !prevKeys[code]; }
 function justPressedEnter() {
   return anyKeyJustPressed || ((keys['Enter'] || keys['NumpadEnter']) && !(prevKeys.Enter || prevKeys.NumpadEnter));
 }
+// Deliberately does NOT fall back to "any key" — this is used for the NPC
+// talk action, which must only fire on the actual Enter/Return key so that
+// walking around with arrow keys never accidentally opens dialogue.
+function justPressedEnterKeyOnly() {
+  return (keys['Enter'] || keys['NumpadEnter']) && !(prevKeys.Enter || prevKeys.NumpadEnter);
+}
 function commitPrevKeys() {
   prevKeys.Space = keys['Space'];
   prevKeys.ShiftLeft = keys['ShiftLeft'];
@@ -351,6 +432,7 @@ function commitPrevKeys() {
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
 function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function circleRectPush(x, y, r, rect) {
   const cx = clamp(x, rect.x, rect.x + rect.w);
@@ -425,14 +507,19 @@ const ENEMY_DEF = {
   atkFrequency: 1.57, speed: 10,
   halfSize: 18,
 };
+const ENEMY_XP_DROP = 8000;
 
 // Ancient Egg N101 level costs: index i = XP cost to go from level i to i+1.
+// Only indices 0-4 (levels 1-5) are used now — reaching level 5 evolves the
+// egg into Cinnabar Egg N101, after which progress is stone-gated (EVOLVE),
+// not XP-gated. The rest of the table is kept in case a later stage needs it.
 const LEVEL_COSTS = [
   0, 3500, 6200, 9800, 14300, 19700, 26000, 33200, 41300, 50300,
   4000, 7000, 12400, 19600, 28600, 39400, 52000, 66400, 82600, 100600,
   6000, 10500, 18600, 29400, 42900, 59100, 78000, 99600, 123900, 150900,
 ];
-const MAX_LEVEL = 30;
+const EVOLVE_LEVEL = 5;
+const EVOLVE_STONE_COST = 5;
 
 const CUTSCENE_LINES = [
   "Behemoth Island. A researcher has spent years searching these ruins for signs of ancient life.",
@@ -445,15 +532,23 @@ const CUTSCENE_LINES = [
 let screen = 'title'; // 'title' | 'cutscene' | 'game'
 let cutsceneIndex = 0;
 
-let player = null, enemy = null, telegraphs = [], particles = [], loot = [], toasts = [], gameOver = false;
+let player = null, enemies = [], telegraphs = [], particles = [], loot = [], toasts = [], gameOver = false;
 let menuOpen = false, menuTab = 'map';
 let frozenMessage = null;
 let tutorialFlags = { spot: false, dash: false };
+let activeDialogue = null;
 
 // Persistent meta-progression: NOT reset by R, only by a full page reload.
 let metaXP = 0;
 let eggLevel = 0;
+let eggEvolved2 = false;
 const inventory = { stones: { red: 0, purple: 0 } };
+
+function getEggStage() {
+  if (eggEvolved2) return 'evolved2';
+  if (eggLevel >= EVOLVE_LEVEL) return 'cinnabar';
+  return 'ancient';
+}
 
 function loadZone(zoneId, entryX, entryY) {
   const zone = ZONES[zoneId];
@@ -463,12 +558,13 @@ function loadZone(zoneId, entryX, entryY) {
   worldH = zone.worldH;
   player.x = entryX;
   player.y = entryY;
-  enemy = zone.enemySpawn ? {
-    def: ENEMY_DEF, x: zone.enemySpawn.x, y: zone.enemySpawn.y, r: ENEMY_DEF.halfSize,
+  enemies = (zone.enemySpawns || []).map(s => ({
+    def: ENEMY_DEF, x: s.x, y: s.y, r: ENEMY_DEF.halfSize,
     hp: ENEMY_DEF.hpMax, state: 'idle', facingLeft: true, atkCdTimer: 0, hitFlash: 0, lootDropped: false,
-  } : null;
+  }));
   telegraphs = [];
   loot = [];
+  activeDialogue = null;
   updateCamera();
 }
 
@@ -480,6 +576,56 @@ function checkExits() {
       return;
     }
   }
+}
+
+function getNearbyNpc() {
+  const npcs = ZONES[currentZoneId].npcs;
+  if (!npcs) return null;
+  for (const npc of npcs) {
+    if (dist(player.x, player.y, npc.x, npc.y) < INTERACT_RANGE) return npc;
+  }
+  return null;
+}
+
+const DIALOGUE_CHAR_INTERVAL = 0.08;
+function buildDialogueText(parts) {
+  let full = '', slowMask = [], smallMask = [];
+  for (const p of parts) {
+    for (const ch of p.text) {
+      full += ch;
+      slowMask.push(!!p.slow);
+      smallMask.push(!!p.small);
+    }
+  }
+  return { full, slowMask, smallMask };
+}
+function updateDialogue(dt) {
+  const d = activeDialogue;
+  if (!d || d.done) return;
+  if (d.revealLength >= d.full.length) { d.done = true; return; }
+  if (d.slowMask[d.revealLength]) {
+    d.charTimer += dt;
+    if (d.charTimer >= DIALOGUE_CHAR_INTERVAL) {
+      d.charTimer -= DIALOGUE_CHAR_INTERVAL;
+      d.revealLength++;
+    }
+  } else {
+    while (d.revealLength < d.full.length && !d.slowMask[d.revealLength]) d.revealLength++;
+  }
+  if (d.revealLength >= d.full.length) d.done = true;
+}
+function renderDialogueHtml(d) {
+  let html = '';
+  let i = 0;
+  while (i < d.revealLength) {
+    const isSmall = d.smallMask[i];
+    let j = i;
+    while (j < d.revealLength && d.smallMask[j] === isSmall) j++;
+    const chunk = escapeHtml(d.full.slice(i, j));
+    html += isSmall ? `<span class="dialogue-small">${chunk}</span>` : chunk;
+    i = j;
+  }
+  return html;
 }
 
 function startGameSession() {
@@ -494,6 +640,7 @@ function startGameSession() {
   toasts = [];
   gameOver = false;
   menuOpen = false;
+  activeDialogue = null;
   tutorialFlags = { spot: false, dash: false };
   loadZone('start', ZONES.start.playerStart.x, ZONES.start.playerStart.y);
   frozenMessage = 'Use the arrow keys to move!';
@@ -554,31 +701,31 @@ function updatePlayer(dt) {
     player.atkCdTimer = PLAYER_STATS.atkCooldown;
     const fx = Math.cos(player.facing), fy = Math.sin(player.facing);
     const r = PLAYER_STATS.atkRange / 2;
-    spawnTelegraph(player.x + fx * r, player.y + fy * r, r, ATK_WINDUP, PLAYER_STATS.atk, 'enemy', player.x, player.y);
+    spawnTelegraph(player.x + fx * r, player.y + fy * r, r, ATK_WINDUP, PLAYER_STATS.atk, 'enemies', player.x, player.y);
   }
 }
 
-function updateEnemy(dt) {
-  if (enemy.hp <= 0) return;
-  if (enemy.hitFlash > 0) enemy.hitFlash -= dt;
-  if (enemy.atkCdTimer > 0) enemy.atkCdTimer -= dt;
+function updateEnemy(e, dt) {
+  if (e.hp <= 0) return;
+  if (e.hitFlash > 0) e.hitFlash -= dt;
+  if (e.atkCdTimer > 0) e.atkCdTimer -= dt;
 
-  const canSee = hasLineOfSight(enemy.x, enemy.y, player.x, player.y);
-  if (!canSee) { enemy.state = 'idle'; return; }
-  enemy.state = 'chase';
-  enemy.facingLeft = player.x < enemy.x;
+  const canSee = hasLineOfSight(e.x, e.y, player.x, player.y);
+  if (!canSee) { e.state = 'idle'; return; }
+  e.state = 'chase';
+  e.facingLeft = player.x < e.x;
 
-  const d = dist(enemy.x, enemy.y, player.x, player.y);
-  if (d > enemy.def.atkRange * 0.9) {
-    const a = Math.atan2(player.y - enemy.y, player.x - enemy.x);
-    enemy.x += Math.cos(a) * enemy.def.speed * SPEED_SCALE * dt;
-    enemy.y += Math.sin(a) * enemy.def.speed * SPEED_SCALE * dt;
-    resolveObstacles(enemy);
-  } else if (enemy.atkCdTimer <= 0) {
-    enemy.atkCdTimer = enemy.def.atkFrequency;
-    const a = Math.atan2(player.y - enemy.y, player.x - enemy.x);
-    const r = enemy.def.atkRange / 2;
-    spawnTelegraph(enemy.x + Math.cos(a) * r, enemy.y + Math.sin(a) * r, r, ATK_WINDUP, enemy.def.atk, 'player', enemy.x, enemy.y);
+  const d = dist(e.x, e.y, player.x, player.y);
+  if (d > e.def.atkRange * 0.9) {
+    const a = Math.atan2(player.y - e.y, player.x - e.x);
+    e.x += Math.cos(a) * e.def.speed * SPEED_SCALE * dt;
+    e.y += Math.sin(a) * e.def.speed * SPEED_SCALE * dt;
+    resolveObstacles(e);
+  } else if (e.atkCdTimer <= 0) {
+    e.atkCdTimer = e.def.atkFrequency;
+    const a = Math.atan2(player.y - e.y, player.x - e.x);
+    const r = e.def.atkRange / 2;
+    spawnTelegraph(e.x + Math.cos(a) * r, e.y + Math.sin(a) * r, r, ATK_WINDUP, e.def.atk, 'player', e.x, e.y);
   }
 }
 
@@ -590,12 +737,23 @@ function updateTelegraphs(dt) {
       if (t.timer <= 0) {
         t.resolved = true;
         t.impactFlash = 0.15;
-        const targetEntity = t.target === 'enemy' ? enemy : player;
-        if (targetEntity && targetEntity.hp > 0 && dist(t.x, t.y, targetEntity.x, targetEntity.y) < t.r + targetEntity.r &&
-            hasLineOfSight(t.ownerX, t.ownerY, targetEntity.x, targetEntity.y)) {
-          targetEntity.hp -= t.damage;
-          targetEntity.hitFlash = 0.2;
-          spawnHit(targetEntity.x, targetEntity.y, t.target === 'enemy' ? '#ffd35c' : '#ff6161');
+        if (t.target === 'player') {
+          if (player.hp > 0 && dist(t.x, t.y, player.x, player.y) < t.r + player.r &&
+              hasLineOfSight(t.ownerX, t.ownerY, player.x, player.y)) {
+            player.hp -= t.damage;
+            player.hitFlash = 0.2;
+            spawnHit(player.x, player.y, '#ff6161');
+          }
+        } else {
+          for (const en of enemies) {
+            if (en.hp <= 0) continue;
+            if (dist(t.x, t.y, en.x, en.y) < t.r + en.r &&
+                hasLineOfSight(t.ownerX, t.ownerY, en.x, en.y)) {
+              en.hp -= t.damage;
+              en.hitFlash = 0.2;
+              spawnHit(en.x, en.y, '#ffd35c');
+            }
+          }
         }
       }
     } else {
@@ -652,6 +810,19 @@ function doUpdate(dt) {
     return;
   }
 
+  if (activeDialogue) {
+    if (justPressedEnterKeyOnly()) {
+      if (!activeDialogue.done) {
+        activeDialogue.revealLength = activeDialogue.full.length;
+        activeDialogue.done = true;
+      } else {
+        activeDialogue = null;
+      }
+    }
+    if (activeDialogue && !activeDialogue.done) updateDialogue(dt);
+    return;
+  }
+
   if (menuOpen) {
     if (justPressed('KeyM') || justPressed('ShiftRight') || justPressed('Escape')) menuOpen = false;
     if (justPressed('Digit1') && menuTab !== 'map') { menuTab = 'map'; renderMenuContent(); }
@@ -661,29 +832,43 @@ function doUpdate(dt) {
   }
   if (justPressed('KeyM') || justPressed('ShiftRight')) { menuOpen = true; return; }
 
+  if (justPressedEnterKeyOnly()) {
+    const npc = getNearbyNpc();
+    if (npc) {
+      const parts = npc.lines();
+      activeDialogue = { npc, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false };
+      return;
+    }
+  }
+
   updatePlayer(dt);
   updateCamera();
   checkExits();
-  if (enemy) updateEnemy(dt);
+  for (const e of enemies) updateEnemy(e, dt);
   updateTelegraphs(dt);
   updateLoot();
   updateToasts(dt);
 
-  if (enemy && enemy.hp <= 0 && !enemy.lootDropped) {
-    enemy.lootDropped = true;
-    const color = Math.random() < 0.5 ? 'red' : 'purple';
-    loot.push({ type: 'stone', color, x: enemy.x - 16, y: enemy.y, r: 14 });
-    loot.push({ type: 'xp', amount: 30000, x: enemy.x + 16, y: enemy.y, r: 14 });
-    addToast('Enemy defeated!');
+  for (const e of enemies) {
+    if (e.hp <= 0 && !e.lootDropped) {
+      e.lootDropped = true;
+      const color = Math.random() < 0.5 ? 'red' : 'purple';
+      loot.push({ type: 'stone', color, x: e.x - 16, y: e.y, r: 14 });
+      loot.push({ type: 'xp', amount: ENEMY_XP_DROP, x: e.x + 16, y: e.y, r: 14 });
+      addToast('Enemy defeated!');
+    }
   }
 
-  if (enemy && !tutorialFlags.spot && enemy.hp > 0 && hasLineOfSight(enemy.x, enemy.y, player.x, player.y)) {
-    tutorialFlags.spot = true;
-    frozenMessage = 'The enemy has spotted you! Use the space bar to attack!';
-  }
-  if (enemy && !tutorialFlags.dash && enemy.hp > 0 && enemy.hp <= enemy.def.hpMax * 0.5) {
-    tutorialFlags.dash = true;
-    frozenMessage = 'Press Left Shift to dash and dodge enemy attacks! (Right Shift opens the menu)';
+  if (currentZoneId === 'start' && enemies[0]) {
+    const e = enemies[0];
+    if (!tutorialFlags.spot && e.hp > 0 && hasLineOfSight(e.x, e.y, player.x, player.y)) {
+      tutorialFlags.spot = true;
+      frozenMessage = 'The enemy has spotted you! Use the space bar to attack!';
+    }
+    if (!tutorialFlags.dash && e.hp > 0 && e.hp <= e.def.hpMax * 0.5) {
+      tutorialFlags.dash = true;
+      frozenMessage = 'Press Left Shift to dash and dodge enemy attacks! (Right Shift opens the menu)';
+    }
   }
 
   if (player.hp <= 0) { player.hp = 0; endGame(); }
@@ -720,19 +905,38 @@ function renderMenuContent() {
         <div style="position:absolute; left:76px; top:84px; font-size:12px;">You are here</div>
       </div>`;
   } else if (menuTab === 'upgrade') {
-    const cost = eggLevel < MAX_LEVEL ? LEVEL_COSTS[eggLevel] : null;
-    const canAfford = cost !== null && metaXP >= cost;
-    html = `
-      <h2 style="display:flex; align-items:center; gap:12px;">
-        <img src="${EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="48">
-        Ancient Egg N101
-      </h2>
-      <p>Level: ${eggLevel} / ${MAX_LEVEL}</p>
-      <p>XP: ${metaXP.toLocaleString()}</p>
-      ${cost !== null
-        ? `<p>Next level cost: ${cost.toLocaleString()} XP</p>
-           <button id="upgradeBtn" class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Upgrade</button>`
-        : `<p style="color:#8cff8c">MAX LEVEL REACHED</p>`}`;
+    const stage = getEggStage();
+    if (stage === 'ancient') {
+      const cost = LEVEL_COSTS[eggLevel];
+      const canAfford = metaXP >= cost;
+      html = `
+        <h2 style="display:flex; align-items:center; gap:12px;">
+          <img src="${EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="48">
+          Ancient Egg N101
+        </h2>
+        <p>Level: ${eggLevel} / ${EVOLVE_LEVEL}</p>
+        <p>XP: ${metaXP.toLocaleString()}</p>
+        <p>Next level cost: ${cost.toLocaleString()} XP</p>
+        <button id="upgradeBtn" class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Upgrade</button>`;
+    } else if (stage === 'cinnabar') {
+      const canEvolve = inventory.stones.red >= EVOLVE_STONE_COST && inventory.stones.purple >= EVOLVE_STONE_COST;
+      html = `
+        <h2 style="display:flex; align-items:center; gap:12px;">
+          <img src="${CINNABAR_EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="46">
+          Cinnabar Egg N101
+        </h2>
+        <p>XP: ${metaXP.toLocaleString()}</p>
+        <p>Requires Red Behemoth Stone x${EVOLVE_STONE_COST} and Purple Behemoth Stone x${EVOLVE_STONE_COST}</p>
+        <p style="opacity:.7">You have: ${inventory.stones.red} red, ${inventory.stones.purple} purple</p>
+        <button id="upgradeBtn" class="upgrade-btn" ${canEvolve ? '' : 'disabled'}>EVOLVE</button>`;
+    } else {
+      html = `
+        <h2 style="display:flex; align-items:center; gap:12px;">
+          <img src="${CINNABAR_EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="46">
+          Cinnabar Egg N101
+        </h2>
+        <p style="color:#8cff8c">The egg pulses with newfound energy... its next form is still a mystery!</p>`;
+    }
   } else {
     const rows = [];
     if (inventory.stones.red > 0) {
@@ -749,9 +953,17 @@ function renderMenuContent() {
   const btn = document.getElementById('upgradeBtn');
   if (btn) {
     btn.onclick = () => {
-      if (eggLevel < MAX_LEVEL && metaXP >= LEVEL_COSTS[eggLevel]) {
+      const stage = getEggStage();
+      if (stage === 'ancient' && metaXP >= LEVEL_COSTS[eggLevel]) {
         metaXP -= LEVEL_COSTS[eggLevel];
         eggLevel++;
+        if (eggLevel >= EVOLVE_LEVEL) addToast('Your egg evolved into Cinnabar Egg N101!');
+        renderMenuContent();
+      } else if (stage === 'cinnabar' && inventory.stones.red >= EVOLVE_STONE_COST && inventory.stones.purple >= EVOLVE_STONE_COST) {
+        inventory.stones.red -= EVOLVE_STONE_COST;
+        inventory.stones.purple -= EVOLVE_STONE_COST;
+        eggEvolved2 = true;
+        addToast('The egg trembles with energy...');
         renderMenuContent();
       }
     };
@@ -776,6 +988,15 @@ msgEl.addEventListener('click', () => {
   if (screen !== 'game') return;
   if (frozenMessage) frozenMessage = null;
   else if (gameOver) startGameSession();
+});
+dialogueBoxEl.addEventListener('click', () => {
+  if (!activeDialogue) return;
+  if (!activeDialogue.done) {
+    activeDialogue.revealLength = activeDialogue.full.length;
+    activeDialogue.done = true;
+  } else {
+    activeDialogue = null;
+  }
 });
 
 let menuWasOpen = false;
@@ -813,6 +1034,14 @@ function syncOverlays() {
     renderedFrozenMessage = null;
   }
 
+  if (screen === 'game' && activeDialogue && !gameOver && !frozenMessage && !menuOpen) {
+    dialogueNameEl.textContent = activeDialogue.npc.name;
+    dialogueTextEl.innerHTML = renderDialogueHtml(activeDialogue);
+    dialogueBoxEl.style.display = 'block';
+  } else {
+    dialogueBoxEl.style.display = 'none';
+  }
+
   toastsEl.innerHTML = toasts.map(t => `<div class="toast">${t.text}</div>`).join('');
 }
 
@@ -848,6 +1077,67 @@ function drawEnemy(e) {
     ctx.fillText('?', e.x, by - 4);
     ctx.textAlign = 'left';
   }
+}
+
+function drawWall(w) {
+  if (w.visual === 'tent') {
+    ctx.fillStyle = '#d8d4c8';
+    ctx.beginPath();
+    ctx.moveTo(w.x, w.y + w.h);
+    ctx.lineTo(w.x + w.w / 2, w.y);
+    ctx.lineTo(w.x + w.w, w.y + w.h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#33302a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#4a4f42';
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+    ctx.strokeStyle = '#22251d';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+  }
+}
+
+function drawCampfire(c) {
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, 12, 0, Math.PI * 2);
+  ctx.fillStyle = '#5a3a1a';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(c.x, c.y - 20);
+  ctx.lineTo(c.x - 8, c.y - 2);
+  ctx.lineTo(c.x + 8, c.y - 2);
+  ctx.closePath();
+  ctx.fillStyle = '#ff8c30';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(c.x, c.y - 12);
+  ctx.lineTo(c.x - 4, c.y - 2);
+  ctx.lineTo(c.x + 4, c.y - 2);
+  ctx.closePath();
+  ctx.fillStyle = '#ffe27a';
+  ctx.fill();
+}
+
+function drawNpc(npc) {
+  ctx.beginPath();
+  ctx.arc(npc.x, npc.y, 16, 0, Math.PI * 2);
+  ctx.fillStyle = '#7fd97f';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(npc.name, npc.x, npc.y - 24);
+  if (!activeDialogue && dist(player.x, player.y, npc.x, npc.y) < INTERACT_RANGE) {
+    ctx.fillStyle = '#ffe27a';
+    ctx.fillText('Press Enter', npc.x, npc.y + 32);
+  }
+  ctx.textAlign = 'left';
 }
 
 function draw() {
@@ -889,13 +1179,9 @@ function draw() {
     ctx.textAlign = 'left';
   }
 
-  for (const w of walls) {
-    ctx.fillStyle = '#4a4f42';
-    ctx.fillRect(w.x, w.y, w.w, w.h);
-    ctx.strokeStyle = '#22251d';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(w.x, w.y, w.w, w.h);
-  }
+  for (const w of walls) drawWall(w);
+  if (ZONES[currentZoneId].campfire) drawCampfire(ZONES[currentZoneId].campfire);
+  for (const npc of (ZONES[currentZoneId].npcs || [])) drawNpc(npc);
 
   for (const it of loot) {
     ctx.beginPath();
@@ -928,7 +1214,7 @@ function draw() {
     }
   }
 
-  if (enemy && enemy.hp > 0) drawEnemy(enemy);
+  for (const e of enemies) if (e.hp > 0) drawEnemy(e);
 
   const spriteScale = 2;
   const spriteW = 23 * spriteScale, spriteH = 24 * spriteScale;
@@ -964,8 +1250,8 @@ function draw() {
   ctx.restore();
 
   playerHpFill.style.width = (Math.max(0, player.hp) / PLAYER_STATS.hpMax * 100) + '%';
-  enemyHpEl.style.display = enemy ? '' : 'none';
-  if (enemy) enemyHpFill.style.width = (Math.max(0, enemy.hp) / ENEMY_DEF.hpMax * 100) + '%';
+  enemyHpEl.style.display = enemies.length === 1 ? '' : 'none';
+  if (enemies.length === 1) enemyHpFill.style.width = (Math.max(0, enemies[0].hp) / ENEMY_DEF.hpMax * 100) + '%';
   levelXpEl.textContent = 'Lv. ' + eggLevel + '   XP: ' + metaXP.toLocaleString();
   atkCdFill.style.width = (100 - clamp(player.atkCdTimer / PLAYER_STATS.atkCooldown, 0, 1) * 100) + '%';
   dashCdFill.style.width = (100 - clamp(player.dashCdTimer / PLAYER_STATS.dashCooldown, 0, 1) * 100) + '%';
