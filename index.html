@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Battle Cats RPG — Test Arena</title>
+<title>Battle Cats: The Legend of Behemoth Island</title>
 <style>
   html, body {
     margin: 0;
@@ -27,11 +27,14 @@
     top: 10px;
     left: 10px;
     right: 10px;
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: start;
     pointer-events: none;
     font-size: 13px;
   }
+  #levelXp { text-align: center; font-size: 14px; padding-top: 4px; }
+  #enemyHp { text-align: right; }
   .bar-bg {
     width: 220px;
     height: 14px;
@@ -41,15 +44,13 @@
     overflow: hidden;
     margin-top: 3px;
   }
+  #enemyHp .bar-bg { margin-left: auto; }
   .bar-fill {
     height: 100%;
     transition: width 0.1s linear;
   }
   #playerHp .bar-fill { background: #4aa3ff; }
-  #enemyCount {
-    text-align: right;
-    font-size: 14px;
-  }
+  #enemyHp .bar-fill { background: #d63030; }
   #cooldowns {
     position: absolute;
     bottom: 10px;
@@ -59,9 +60,7 @@
     font-size: 11px;
     pointer-events: none;
   }
-  .cd-box {
-    width: 70px;
-  }
+  .cd-box { width: 70px; }
   .cd-bg {
     width: 100%;
     height: 8px;
@@ -71,14 +70,10 @@
     overflow: hidden;
     margin-top: 2px;
   }
-  .cd-fill {
-    height: 100%;
-    background: #4aa3ff;
-    width: 100%;
-  }
+  .cd-fill { height: 100%; background: #4aa3ff; width: 100%; }
   #msg {
     position: absolute;
-    top: 40%;
+    top: 38%;
     left: 0;
     right: 0;
     text-align: center;
@@ -88,6 +83,8 @@
     pointer-events: none;
     display: none;
   }
+  #msg.msg-tutorial { font-size: 22px; }
+  .msg-sub { font-size: 15px; font-weight: normal; margin-top: 10px; opacity: 0.85; }
   #instructions {
     position: absolute;
     bottom: 10px;
@@ -97,24 +94,137 @@
     opacity: 0.75;
     pointer-events: none;
   }
+  #toasts {
+    position: absolute;
+    top: 54px;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+  .toast {
+    background: #000c;
+    padding: 6px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    animation: toastIn 0.2s ease-out;
+  }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+  #titleScreen, #cutsceneScreen, #menuScreen {
+    position: absolute;
+    inset: 4px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #12160f;
+    border-radius: 4px;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  #titleScreen h1 {
+    font-size: 34px;
+    margin: 0 0 22px;
+    color: #ffd35c;
+    text-shadow: 0 3px 6px #000;
+    max-width: 700px;
+  }
+  .prompt { font-size: 15px; opacity: 0.85; animation: pulse 1.4s ease-in-out infinite; }
+
+  #cutsceneScreen { justify-content: space-between; }
+  .cutscene-stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 100px;
+    font-size: 72px;
+  }
+  .cutscene-actor { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .cutscene-actor span { font-size: 14px; }
+  .cutscene-egg { filter: drop-shadow(0 0 14px #ffe27a); }
+  .cutscene-box {
+    width: 100%;
+    background: #000a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 16px;
+    box-sizing: border-box;
+    min-height: 76px;
+  }
+  #cutsceneLine { font-size: 16px; margin-bottom: 8px; }
+
+  #menuScreen { justify-content: flex-start; padding-top: 30px; }
+  .menu-panel { width: 100%; height: 100%; display: flex; flex-direction: column; }
+  .menu-tabs { display: flex; gap: 8px; margin-bottom: 16px; justify-content: center; }
+  .menu-tabs button {
+    background: #333; border: 1px solid #555; color: #eee;
+    padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;
+  }
+  .menu-tabs button.active { background: #4aa3ff; border-color: #4aa3ff; color: #111; }
+  .menu-tabs kbd { background: #0006; padding: 1px 5px; border-radius: 3px; margin-left: 4px; font-size: 11px; }
+  .menu-content { flex: 1; text-align: left; padding: 0 50px; overflow: auto; }
+  .menu-content h2 { margin-top: 0; }
+  .upgrade-btn {
+    background: #4aa3ff; border: none; color: #fff;
+    padding: 10px 22px; border-radius: 5px; font-size: 15px; cursor: pointer;
+  }
+  .upgrade-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+  .menu-hint { text-align: center; font-size: 11px; opacity: 0.6; padding: 10px; }
+  .item-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; }
+  .item-swatch { width: 18px; height: 18px; border-radius: 50%; display: inline-block; }
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="game" width="960" height="600"></canvas>
+
   <div id="hud">
-    <div id="playerHp">
-      Player HP
-      <div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div>
-    </div>
-    <div id="enemyCount">Enemies: <span id="enemyCountVal">3</span></div>
+    <div id="playerHp">Player HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
+    <div id="levelXp">Lv. 0&nbsp;&nbsp;&nbsp;XP: 0</div>
+    <div id="enemyHp">Enemy HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
   </div>
   <div id="cooldowns">
     <div class="cd-box">Attack<div class="cd-bg"><div id="atkCd" class="cd-fill"></div></div></div>
     <div class="cd-box">Dash<div class="cd-bg"><div id="dashCd" class="cd-fill"></div></div></div>
   </div>
+  <div id="toasts"></div>
   <div id="msg"></div>
-  <div id="instructions">Arrow keys move · Space attack · Shift dash · R restart</div>
+  <div id="instructions">Arrow keys move · Space attack · Left Shift dash · Right Shift (or M) menu · R restart</div>
+
+  <div id="titleScreen">
+    <h1>Battle Cats: The Legend of Behemoth Island</h1>
+    <div class="prompt">Press Enter to Start</div>
+  </div>
+
+  <div id="cutsceneScreen">
+    <div class="cutscene-stage">
+      <div class="cutscene-actor">🐱<span>Cat Researcher</span></div>
+      <div class="cutscene-egg">🥚</div>
+    </div>
+    <div class="cutscene-box">
+      <div id="cutsceneLine"></div>
+      <div class="prompt">Press Enter to continue ▸</div>
+    </div>
+  </div>
+
+  <div id="menuScreen">
+    <div class="menu-panel">
+      <div class="menu-tabs">
+        <button data-tab="map">Map <kbd>1</kbd></button>
+        <button data-tab="upgrade">Upgrade <kbd>2</kbd></button>
+        <button data-tab="items">Items <kbd>3</kbd></button>
+      </div>
+      <div class="menu-content" id="menuContent"></div>
+      <div class="menu-hint">Press M or Esc to close</div>
+    </div>
+  </div>
 </div>
 <script>
 const canvas = document.getElementById('game');
@@ -122,30 +232,31 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
 const playerHpFill = document.querySelector('#playerHp .bar-fill');
-const enemyCountVal = document.getElementById('enemyCountVal');
+const enemyHpFill = document.querySelector('#enemyHp .bar-fill');
+const levelXpEl = document.getElementById('levelXp');
 const atkCdFill = document.getElementById('atkCd');
 const dashCdFill = document.getElementById('dashCd');
 const msgEl = document.getElementById('msg');
+const toastsEl = document.getElementById('toasts');
+const titleScreenEl = document.getElementById('titleScreen');
+const cutsceneScreenEl = document.getElementById('cutsceneScreen');
+const cutsceneLineEl = document.getElementById('cutsceneLine');
+const menuScreenEl = document.getElementById('menuScreen');
+const menuContentEl = document.getElementById('menuContent');
 
-// Raw "speed" stats (15 / 10 / ...) are small design units, not pixels/sec on their own.
+// Raw "speed" stats are small design units, not pixels/sec on their own.
 // This converts them to a workable on-screen pace; tune freely.
 const SPEED_SCALE = 10;
+// Fixed cosmetic wind-up so the red telegraph circle is visible before a hit lands.
+const ATK_WINDUP = 0.2;
 
 const START = { x: 80, y: 300 };
+const ENEMY_SPAWN = { x: 760, y: 300 };
 
-// Solid walls: block movement, block line of sight, and block attacks that
-// try to pass through them.
+// Walls: block movement, block line of sight, and block attacks passing through them.
 const walls = [
-  { x: 420, y: 0, w: 40, h: 260 },
-  { x: 420, y: 380, w: 40, h: 220 },
-  { x: 680, y: 260, w: 140, h: 40 },
-];
-
-// Pits: instant player death + respawn at START, do not block sight or movement
-// for enemies (only the player can fall in).
-const pits = [
-  { x: 260, y: 420, w: 90, h: 70 },
-  { x: 760, y: 430, w: 80, h: 70 },
+  { x: 420, y: 170, w: 60, h: 260 },   // sits directly between START and the enemy
+  { x: 600, y: 460, w: 140, h: 40 },   // decorative
 ];
 
 const keys = {};
@@ -153,17 +264,31 @@ const prevKeys = {};
 
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
-  if (e.code === 'Space') e.preventDefault();
-  if (e.code === 'KeyR') resetGame();
+  if (e.code === 'Space' || e.code === 'Enter') e.preventDefault();
+  if (e.code === 'KeyR' && screen === 'game') startGameSession();
 });
 window.addEventListener('keyup', e => keys[e.code] = false);
 
-function justPressed(code) {
-  return keys[code] && !prevKeys[code];
+function justPressed(code) { return keys[code] && !prevKeys[code]; }
+function justPressedEnter() {
+  return (keys['Enter'] || keys['NumpadEnter']) && !(prevKeys.Enter || prevKeys.NumpadEnter);
+}
+function commitPrevKeys() {
+  prevKeys.Space = keys['Space'];
+  prevKeys.ShiftLeft = keys['ShiftLeft'];
+  prevKeys.ShiftRight = keys['ShiftRight'];
+  prevKeys.Enter = keys['Enter'];
+  prevKeys.NumpadEnter = keys['NumpadEnter'];
+  prevKeys.KeyM = keys['KeyM'];
+  prevKeys.Escape = keys['Escape'];
+  prevKeys.Digit1 = keys['Digit1'];
+  prevKeys.Digit2 = keys['Digit2'];
+  prevKeys.Digit3 = keys['Digit3'];
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 function circleRectPush(x, y, r, rect) {
   const cx = clamp(x, rect.x, rect.x + rect.w);
@@ -177,13 +302,6 @@ function circleRectPush(x, y, r, rect) {
   if (d === 0) return { x: x, y: y - r };
   return null;
 }
-
-function circleOverlapsRect(x, y, r, rect) {
-  const cx = clamp(x, rect.x, rect.x + rect.w);
-  const cy = clamp(y, rect.y, rect.y + rect.h);
-  return dist(x, y, cx, cy) < r;
-}
-
 function resolveObstacles(entity) {
   for (const w of walls) {
     const res = circleRectPush(entity.x, entity.y, entity.r, w);
@@ -222,115 +340,101 @@ function hasLineOfSight(x1, y1, x2, y2) {
 const PLAYER_STATS = {
   hpMax: 100,
   atk: 8,
-  atkRange: 140,      // "1250 max range" is the game's theoretical scale, not used directly here
+  atkRange: 140,     // "1250 max range" is the game's theoretical scale, not used directly here
   speed: 10,
   dashMultiplier: 2,
-  dashDuration: 0.25,   // assumption: not specified, tune freely
-  dashCooldown: 1.0,    // assumption: not specified, tune freely
+  dashDuration: 0.25,  // assumption: not specified, tune freely
+  dashCooldown: 1.0,   // assumption: not specified, tune freely
   atkCooldown: 1.23,
-  foreswing: 0.27,
-  backswing: 0.33,
   radius: 20,
 };
 
-// Combat stats are uniform across all three enemies per spec. Movement speed
-// (carried over from before) and shape/attack-mode are the only remaining
-// per-type differences.
-const ENEMY_COMMON = {
+const ENEMY_DEF = {
   hpMax: 90, atk: 8, atkRange: 110,   // "4000 max range" is the game's theoretical scale, not used directly here
-  atkFrequency: 1.57, foreswing: 0.27, backswing: 0.33,
-};
-const ENEMY_DEFS = {
-  grunt: {
-    ...ENEMY_COMMON, speed: 10, attackMode: 'melee',
-    halfSize: 18, color: '#c0392b', shape: 'square',
-  },
-  archer: {
-    ...ENEMY_COMMON, speed: 8, attackMode: 'ranged',
-    halfSize: 16, color: '#e0862a', shape: 'triangle', reticleRadius: 55,
-  },
-  tank: {
-    ...ENEMY_COMMON, speed: 6, attackMode: 'melee',
-    halfSize: 26, color: '#7a3fae', shape: 'square',
-  },
+  atkFrequency: 1.57, speed: 10,
+  halfSize: 18, color: '#c0392b',
 };
 
-const ENEMY_SPAWNS = [
-  { type: 'grunt', x: 560, y: 500 },
-  { type: 'archer', x: 860, y: 200 },
-  { type: 'tank', x: 560, y: 120 },
+// Ancient Egg N101 level costs: index i = XP cost to go from level i to i+1.
+const LEVEL_COSTS = [
+  0, 3500, 6200, 9800, 14300, 19700, 26000, 33200, 41300, 50300,
+  4000, 7000, 12400, 19600, 28600, 39400, 52000, 66400, 82600, 100600,
+  6000, 10500, 18600, 29400, 42900, 59100, 78000, 99600, 123900, 150900,
+];
+const MAX_LEVEL = 30;
+
+const CUTSCENE_LINES = [
+  "Behemoth Island. A researcher has spent years searching these ruins for signs of ancient life.",
+  "Deep in a hidden chamber, something catches her eye...",
+  "An egg unlike any she's seen before. Ancient. Warm. Alive.",
+  '"This... this could change everything."',
+  "Cat Researcher decides to take the egg out into the field to study it firsthand.",
 ];
 
-let player, enemies, telegraphs, particles, gameOver, frozenTimer;
+let screen = 'title'; // 'title' | 'cutscene' | 'game'
+let cutsceneIndex = 0;
 
-function resetGame() {
+let player, enemy, telegraphs, particles, loot, toasts, gameOver;
+let menuOpen = false, menuTab = 'map';
+let frozenMessage = null;
+let tutorialFlags = { spot: false, dash: false };
+
+// Persistent meta-progression: NOT reset by R, only by a full page reload.
+let metaXP = 0;
+let eggLevel = 0;
+const inventory = { stones: { red: 0, purple: 0 } };
+
+function startGameSession() {
+  screen = 'game';
   player = {
     x: START.x, y: START.y, r: PLAYER_STATS.radius,
-    hp: PLAYER_STATS.hpMax,
-    facing: 0,
+    hp: PLAYER_STATS.hpMax, facing: 0,
     isDashing: false, dashTimer: 0, dashCdTimer: 0,
-    atkCdTimer: 0,
-    hitFlash: 0,
+    atkCdTimer: 0, hitFlash: 0,
   };
-  enemies = ENEMY_SPAWNS.map(s => {
-    const def = ENEMY_DEFS[s.type];
-    return {
-      def, x: s.x, y: s.y, r: def.halfSize,
-      hp: def.hpMax,
-      state: 'chase',
-      atkCdTimer: 0,
-      hitFlash: 0,
-    };
-  });
+  enemy = {
+    def: ENEMY_DEF, x: ENEMY_SPAWN.x, y: ENEMY_SPAWN.y, r: ENEMY_DEF.halfSize,
+    hp: ENEMY_DEF.hpMax, state: 'idle', atkCdTimer: 0, hitFlash: 0, lootDropped: false,
+  };
   telegraphs = [];
   particles = [];
+  loot = [];
+  toasts = [];
   gameOver = false;
-  frozenTimer = 0;
-  msgEl.style.display = 'none';
+  menuOpen = false;
+  tutorialFlags = { spot: false, dash: false };
+  frozenMessage = 'Use the arrow keys to move!';
 }
 
 function spawnHit(x, y, color) {
   for (let i = 0; i < 10; i++) {
     const a = Math.random() * Math.PI * 2;
     const speed = 60 + Math.random() * 120;
-    particles.push({
-      x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-      life: 0.35, maxLife: 0.35, color,
-    });
+    particles.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 0.35, maxLife: 0.35, color });
   }
 }
-
 function spawnTelegraph(cx, cy, radius, windup, damage, target, ownerX, ownerY) {
-  telegraphs.push({
-    x: cx, y: cy, r: radius,
-    timer: windup, resolved: false,
-    impactFlash: 0, damage, target, ownerX, ownerY,
-  });
+  telegraphs.push({ x: cx, y: cy, r: radius, timer: windup, resolved: false, impactFlash: 0, damage, target, ownerX, ownerY });
 }
+function addToast(text) { toasts.push({ text, life: 2.5 }); }
 
 function updatePlayer(dt) {
   if (player.atkCdTimer > 0) player.atkCdTimer -= dt;
   if (player.dashCdTimer > 0) player.dashCdTimer -= dt;
   if (player.hitFlash > 0) player.hitFlash -= dt;
 
-  const lockDuration = PLAYER_STATS.foreswing + PLAYER_STATS.backswing;
-  const elapsed = PLAYER_STATS.atkCooldown - player.atkCdTimer;
-  const locked = player.atkCdTimer > 0 && elapsed < lockDuration;
-
   let mx = 0, my = 0;
-  if (!locked) {
-    if (keys['ArrowUp']) my -= 1;
-    if (keys['ArrowDown']) my += 1;
-    if (keys['ArrowLeft']) mx -= 1;
-    if (keys['ArrowRight']) mx += 1;
-  }
+  if (keys['ArrowUp']) my -= 1;
+  if (keys['ArrowDown']) my += 1;
+  if (keys['ArrowLeft']) mx -= 1;
+  if (keys['ArrowRight']) mx += 1;
   const mlen = Math.hypot(mx, my);
   if (mlen > 0) {
     mx /= mlen; my /= mlen;
     player.facing = Math.atan2(my, mx);
   }
 
-  if (!locked && (justPressed('ShiftLeft') || justPressed('ShiftRight'))) {
+  if (justPressed('ShiftLeft')) {
     if (player.dashCdTimer <= 0 && !player.isDashing) {
       player.isDashing = true;
       player.dashTimer = PLAYER_STATS.dashDuration;
@@ -338,70 +442,50 @@ function updatePlayer(dt) {
     }
   }
 
-  if (!locked) {
-    let speed = PLAYER_STATS.speed * SPEED_SCALE;
-    if (player.isDashing) {
-      speed *= PLAYER_STATS.dashMultiplier;
-      player.dashTimer -= dt;
-      if (player.dashTimer <= 0) player.isDashing = false;
-    }
-
-    const moveDx = mlen > 0 ? mx : Math.cos(player.facing);
-    const moveDy = mlen > 0 ? my : Math.sin(player.facing);
-    if (mlen > 0 || player.isDashing) {
-      player.x += moveDx * speed * dt;
-      player.y += moveDy * speed * dt;
-    }
-    resolveObstacles(player);
+  let speed = PLAYER_STATS.speed * SPEED_SCALE;
+  if (player.isDashing) {
+    speed *= PLAYER_STATS.dashMultiplier;
+    player.dashTimer -= dt;
+    if (player.dashTimer <= 0) player.isDashing = false;
   }
 
-  if (!locked && justPressed('Space') && player.atkCdTimer <= 0) {
-    player.isDashing = false;
+  const moveDx = mlen > 0 ? mx : Math.cos(player.facing);
+  const moveDy = mlen > 0 ? my : Math.sin(player.facing);
+  if (mlen > 0 || player.isDashing) {
+    player.x += moveDx * speed * dt;
+    player.y += moveDy * speed * dt;
+  }
+  resolveObstacles(player);
+
+  if (justPressed('Space') && player.atkCdTimer <= 0) {
     player.atkCdTimer = PLAYER_STATS.atkCooldown;
     const fx = Math.cos(player.facing), fy = Math.sin(player.facing);
     const r = PLAYER_STATS.atkRange / 2;
-    spawnTelegraph(
-      player.x + fx * r, player.y + fy * r,
-      r, PLAYER_STATS.foreswing, PLAYER_STATS.atk, 'enemies',
-      player.x, player.y
-    );
+    spawnTelegraph(player.x + fx * r, player.y + fy * r, r, ATK_WINDUP, PLAYER_STATS.atk, 'enemy', player.x, player.y);
   }
 }
 
-function updateEnemy(e, dt) {
-  if (e.hp <= 0) return;
-  if (e.hitFlash > 0) e.hitFlash -= dt;
-  if (e.atkCdTimer > 0) e.atkCdTimer -= dt;
+function updateEnemy(dt) {
+  if (enemy.hp <= 0) return;
+  if (enemy.hitFlash > 0) enemy.hitFlash -= dt;
+  if (enemy.atkCdTimer > 0) enemy.atkCdTimer -= dt;
 
-  const lockDuration = e.def.foreswing + e.def.backswing;
-  const elapsed = e.def.atkFrequency - e.atkCdTimer;
-  const locked = e.atkCdTimer > 0 && elapsed < lockDuration;
-  if (locked) { e.state = 'attacking'; return; }
+  const canSee = hasLineOfSight(enemy.x, enemy.y, player.x, player.y);
+  if (!canSee) { enemy.state = 'idle'; return; }
+  enemy.state = 'chase';
 
-  const canSee = hasLineOfSight(e.x, e.y, player.x, player.y);
-  if (!canSee) { e.state = 'idle'; return; }
-  e.state = 'chase';
-
-  const d = dist(e.x, e.y, player.x, player.y);
-  if (d > e.def.atkRange * 0.9) {
-    const a = Math.atan2(player.y - e.y, player.x - e.x);
-    e.x += Math.cos(a) * e.def.speed * SPEED_SCALE * dt;
-    e.y += Math.sin(a) * e.def.speed * SPEED_SCALE * dt;
-    resolveObstacles(e);
-  } else if (e.atkCdTimer <= 0) {
-    e.atkCdTimer = e.def.atkFrequency;
-    let cx, cy, r;
-    if (e.def.attackMode === 'ranged') {
-      cx = player.x; cy = player.y; r = e.def.reticleRadius;
-    } else {
-      const a = Math.atan2(player.y - e.y, player.x - e.x);
-      r = e.def.atkRange / 2;
-      cx = e.x + Math.cos(a) * r;
-      cy = e.y + Math.sin(a) * r;
-    }
-    spawnTelegraph(cx, cy, r, e.def.foreswing, e.def.atk, 'player', e.x, e.y);
+  const d = dist(enemy.x, enemy.y, player.x, player.y);
+  if (d > enemy.def.atkRange * 0.9) {
+    const a = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+    enemy.x += Math.cos(a) * enemy.def.speed * SPEED_SCALE * dt;
+    enemy.y += Math.sin(a) * enemy.def.speed * SPEED_SCALE * dt;
+    resolveObstacles(enemy);
+  } else if (enemy.atkCdTimer <= 0) {
+    enemy.atkCdTimer = enemy.def.atkFrequency;
+    const a = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+    const r = enemy.def.atkRange / 2;
+    spawnTelegraph(enemy.x + Math.cos(a) * r, enemy.y + Math.sin(a) * r, r, ATK_WINDUP, enemy.def.atk, 'player', enemy.x, enemy.y);
   }
-  // else: in range but still on cooldown from the last attack — just hold position
 }
 
 function updateTelegraphs(dt) {
@@ -412,23 +496,12 @@ function updateTelegraphs(dt) {
       if (t.timer <= 0) {
         t.resolved = true;
         t.impactFlash = 0.15;
-        if (t.target === 'player') {
-          if (player.hp > 0 && dist(t.x, t.y, player.x, player.y) < t.r + player.r &&
-              hasLineOfSight(t.ownerX, t.ownerY, player.x, player.y)) {
-            player.hp -= t.damage;
-            player.hitFlash = 0.2;
-            spawnHit(player.x, player.y, '#ff6161');
-          }
-        } else {
-          for (const en of enemies) {
-            if (en.hp <= 0) continue;
-            if (dist(t.x, t.y, en.x, en.y) < t.r + en.r &&
-                hasLineOfSight(t.ownerX, t.ownerY, en.x, en.y)) {
-              en.hp -= t.damage;
-              en.hitFlash = 0.2;
-              spawnHit(en.x, en.y, '#ffd35c');
-            }
-          }
+        const targetEntity = t.target === 'enemy' ? enemy : player;
+        if (targetEntity.hp > 0 && dist(t.x, t.y, targetEntity.x, targetEntity.y) < t.r + targetEntity.r &&
+            hasLineOfSight(t.ownerX, t.ownerY, targetEntity.x, targetEntity.y)) {
+          targetEntity.hp -= t.damage;
+          targetEntity.hitFlash = 0.2;
+          spawnHit(targetEntity.x, targetEntity.y, t.target === 'enemy' ? '#ffd35c' : '#ff6161');
         }
       }
     } else {
@@ -438,43 +511,83 @@ function updateTelegraphs(dt) {
   }
 }
 
-function checkPits() {
-  for (const p of pits) {
-    if (circleOverlapsRect(player.x, player.y, player.r, p)) {
-      frozenTimer = 1.0;
-      msgEl.textContent = 'Fell into a pit!';
-      msgEl.style.color = '#ffcc66';
-      msgEl.style.display = 'block';
-      return;
+function updateLoot() {
+  for (let i = loot.length - 1; i >= 0; i--) {
+    const it = loot[i];
+    if (dist(player.x, player.y, it.x, it.y) < player.r + it.r) {
+      if (it.type === 'stone') {
+        inventory.stones[it.color]++;
+        addToast('+1 ' + capitalize(it.color) + ' Behemoth Stone');
+      } else {
+        metaXP += it.amount;
+        addToast('+' + it.amount.toLocaleString() + ' XP');
+      }
+      loot.splice(i, 1);
     }
   }
 }
 
-function update(dt) {
-  if (gameOver) {
-    prevKeys.Space = keys['Space']; prevKeys.ShiftLeft = keys['ShiftLeft']; prevKeys.ShiftRight = keys['ShiftRight'];
+function updateToasts(dt) {
+  for (let i = toasts.length - 1; i >= 0; i--) {
+    toasts[i].life -= dt;
+    if (toasts[i].life <= 0) toasts.splice(i, 1);
+  }
+}
+
+function doUpdate(dt) {
+  if (screen === 'title') {
+    if (justPressedEnter()) { screen = 'cutscene'; cutsceneIndex = 0; }
+    return;
+  }
+  if (screen === 'cutscene') {
+    if (justPressedEnter()) {
+      cutsceneIndex++;
+      if (cutsceneIndex >= CUTSCENE_LINES.length) startGameSession();
+    }
     return;
   }
 
-  if (frozenTimer > 0) {
-    frozenTimer -= dt;
-    if (frozenTimer <= 0) {
-      player.x = START.x; player.y = START.y; player.hp = PLAYER_STATS.hpMax;
-      msgEl.style.display = 'none';
-    }
-    prevKeys.Space = keys['Space']; prevKeys.ShiftLeft = keys['ShiftLeft']; prevKeys.ShiftRight = keys['ShiftRight'];
+  // screen === 'game'
+  if (gameOver) return;
+
+  if (frozenMessage) {
+    if (justPressedEnter()) frozenMessage = null;
     return;
   }
+
+  if (menuOpen) {
+    if (justPressed('KeyM') || justPressed('ShiftRight') || justPressed('Escape')) menuOpen = false;
+    if (justPressed('Digit1')) menuTab = 'map';
+    if (justPressed('Digit2')) menuTab = 'upgrade';
+    if (justPressed('Digit3')) menuTab = 'items';
+    return;
+  }
+  if (justPressed('KeyM') || justPressed('ShiftRight')) { menuOpen = true; return; }
 
   updatePlayer(dt);
-  for (const e of enemies) updateEnemy(e, dt);
+  updateEnemy(dt);
   updateTelegraphs(dt);
-  checkPits();
+  updateLoot();
+  updateToasts(dt);
 
-  if (frozenTimer <= 0) {
-    if (enemies.every(e => e.hp <= 0)) endGame(true);
-    if (player.hp <= 0) { player.hp = 0; endGame(false); }
+  if (enemy.hp <= 0 && !enemy.lootDropped) {
+    enemy.lootDropped = true;
+    const color = Math.random() < 0.5 ? 'red' : 'purple';
+    loot.push({ type: 'stone', color, x: enemy.x - 16, y: enemy.y, r: 14 });
+    loot.push({ type: 'xp', amount: 30000, x: enemy.x + 16, y: enemy.y, r: 14 });
+    addToast('Enemy defeated!');
   }
+
+  if (!tutorialFlags.spot && enemy.hp > 0 && hasLineOfSight(enemy.x, enemy.y, player.x, player.y)) {
+    tutorialFlags.spot = true;
+    frozenMessage = 'The enemy has spotted you! Use the space bar to attack!';
+  }
+  if (!tutorialFlags.dash && enemy.hp > 0 && enemy.hp <= enemy.def.hpMax * 0.5) {
+    tutorialFlags.dash = true;
+    frozenMessage = 'Press Left Shift to dash and dodge enemy attacks! (Right Shift opens the menu)';
+  }
+
+  if (player.hp <= 0) { player.hp = 0; endGame(); }
 
   for (let i = particles.length - 1; i >= 0; i--) {
     const pt = particles[i];
@@ -483,43 +596,99 @@ function update(dt) {
     pt.life -= dt;
     if (pt.life <= 0) particles.splice(i, 1);
   }
-
-  playerHpFill.style.width = (Math.max(0, player.hp) / PLAYER_STATS.hpMax * 100) + '%';
-  enemyCountVal.textContent = enemies.filter(e => e.hp > 0).length;
-  atkCdFill.style.width = (100 - clamp(player.atkCdTimer / PLAYER_STATS.atkCooldown, 0, 1) * 100) + '%';
-  dashCdFill.style.width = (100 - clamp(player.dashCdTimer / PLAYER_STATS.dashCooldown, 0, 1) * 100) + '%';
-
-  prevKeys.Space = keys['Space'];
-  prevKeys.ShiftLeft = keys['ShiftLeft'];
-  prevKeys.ShiftRight = keys['ShiftRight'];
 }
 
-function endGame(playerWon) {
+function endGame() {
   gameOver = true;
-  msgEl.textContent = (playerWon ? 'ALL ENEMIES DEFEATED' : 'YOU DIED') + ' — press R to restart';
-  msgEl.style.color = playerWon ? '#8cff8c' : '#ff6b6b';
-  msgEl.style.display = 'block';
+  msgEl.classList.remove('msg-tutorial');
+  msgEl.textContent = 'YOU DIED — press R to restart';
+  msgEl.style.color = '#ff6b6b';
+}
+
+function renderMenuContent() {
+  document.querySelectorAll('.menu-tabs button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === menuTab);
+  });
+
+  let html = '';
+  if (menuTab === 'map') {
+    html = `
+      <h2>Behemoth Island</h2>
+      <p style="opacity:.7">Full island map coming soon — this is just the test arena for now.</p>
+      <div style="margin-top:20px; width:340px; height:200px; border:2px solid #4aa3ff; border-radius:50%; position:relative;">
+        <div style="position:absolute; left:60px; top:90px; width:10px; height:10px; background:#ff5050; border-radius:50%;"></div>
+        <div style="position:absolute; left:76px; top:84px; font-size:12px;">You are here</div>
+      </div>`;
+  } else if (menuTab === 'upgrade') {
+    const cost = eggLevel < MAX_LEVEL ? LEVEL_COSTS[eggLevel] : null;
+    const canAfford = cost !== null && metaXP >= cost;
+    html = `
+      <h2>Ancient Egg N101</h2>
+      <p>Level: ${eggLevel} / ${MAX_LEVEL}</p>
+      <p>XP: ${metaXP.toLocaleString()}</p>
+      ${cost !== null
+        ? `<p>Next level cost: ${cost.toLocaleString()} XP</p>
+           <button id="upgradeBtn" class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Upgrade</button>`
+        : `<p style="color:#8cff8c">MAX LEVEL REACHED</p>`}`;
+  } else {
+    const rows = [];
+    if (inventory.stones.red > 0) {
+      rows.push(`<div class="item-row"><span class="item-swatch" style="background:#e14b4b"></span> Red Behemoth Stone × ${inventory.stones.red}</div>`);
+    }
+    if (inventory.stones.purple > 0) {
+      rows.push(`<div class="item-row"><span class="item-swatch" style="background:#9b4be1"></span> Purple Behemoth Stone × ${inventory.stones.purple}</div>`);
+    }
+    html = `<h2>Items</h2><p>XP balance: ${metaXP.toLocaleString()}</p>` +
+      (rows.length ? rows.join('') : '<p style="opacity:.7">No items yet.</p>');
+  }
+  menuContentEl.innerHTML = html;
+
+  const btn = document.getElementById('upgradeBtn');
+  if (btn) {
+    btn.onclick = () => {
+      if (eggLevel < MAX_LEVEL && metaXP >= LEVEL_COSTS[eggLevel]) {
+        metaXP -= LEVEL_COSTS[eggLevel];
+        eggLevel++;
+        renderMenuContent();
+      }
+    };
+  }
+}
+document.querySelectorAll('.menu-tabs button').forEach(btn => {
+  btn.addEventListener('click', () => { menuTab = btn.dataset.tab; });
+});
+
+function syncOverlays() {
+  titleScreenEl.style.display = screen === 'title' ? 'flex' : 'none';
+  cutsceneScreenEl.style.display = screen === 'cutscene' ? 'flex' : 'none';
+  if (screen === 'cutscene') cutsceneLineEl.textContent = CUTSCENE_LINES[cutsceneIndex];
+
+  const showMenu = screen === 'game' && menuOpen;
+  menuScreenEl.style.display = showMenu ? 'flex' : 'none';
+  if (showMenu) renderMenuContent();
+
+  if (screen === 'game' && gameOver) {
+    msgEl.style.display = 'block';
+  } else if (screen === 'game' && frozenMessage && !menuOpen) {
+    msgEl.classList.add('msg-tutorial');
+    msgEl.style.color = '#ffe27a';
+    msgEl.innerHTML = frozenMessage + '<div class="msg-sub">Press Enter to continue</div>';
+    msgEl.style.display = 'block';
+  } else {
+    msgEl.style.display = 'none';
+  }
+
+  toastsEl.innerHTML = toasts.map(t => `<div class="toast">${t.text}</div>`).join('');
 }
 
 function drawEnemy(e) {
   if (e.hp <= 0) return;
   const s = e.def.halfSize;
-  const color = e.hitFlash > 0 ? '#ffffff' : e.def.color;
-  ctx.fillStyle = color;
+  ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.def.color;
+  ctx.fillRect(e.x - s, e.y - s, s * 2, s * 2);
   ctx.strokeStyle = 'rgba(0,0,0,0.35)';
   ctx.lineWidth = 2;
-  if (e.def.shape === 'triangle') {
-    ctx.beginPath();
-    ctx.moveTo(e.x, e.y - s);
-    ctx.lineTo(e.x - s, e.y + s);
-    ctx.lineTo(e.x + s, e.y + s);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else {
-    ctx.fillRect(e.x - s, e.y - s, s * 2, s * 2);
-    ctx.strokeRect(e.x - s, e.y - s, s * 2, s * 2);
-  }
+  ctx.strokeRect(e.x - s, e.y - s, s * 2, s * 2);
 
   const barW = 40, barH = 5;
   const pct = Math.max(0, e.hp) / e.def.hpMax;
@@ -534,30 +703,23 @@ function drawEnemy(e) {
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('?', e.x, by - 4);
+    ctx.textAlign = 'left';
   }
 }
 
 function draw() {
+  if (screen !== 'game') {
+    ctx.fillStyle = '#1a1f16';
+    ctx.fillRect(0, 0, W, H);
+    return;
+  }
+
   ctx.clearRect(0, 0, W, H);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
-  for (let gx = 0; gx < W; gx += 40) {
-    ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
-  }
-  for (let gy = 0; gy < H; gy += 40) {
-    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
-  }
-
-  for (const p of pits) {
-    ctx.beginPath();
-    ctx.ellipse(p.x + p.w / 2, p.y + p.h / 2, p.w / 2, p.h / 2, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,80,80,0.6)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  }
+  for (let gx = 0; gx < W; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+  for (let gy = 0; gy < H; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
 
   for (const w of walls) {
     ctx.fillStyle = '#4a4f42';
@@ -565,6 +727,22 @@ function draw() {
     ctx.strokeStyle = '#22251d';
     ctx.lineWidth = 2;
     ctx.strokeRect(w.x, w.y, w.w, w.h);
+  }
+
+  for (const it of loot) {
+    ctx.beginPath();
+    ctx.arc(it.x, it.y, it.r, 0, Math.PI * 2);
+    ctx.fillStyle = it.type === 'stone' ? (it.color === 'red' ? '#e14b4b' : '#9b4be1') : '#ffd35c';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(it.x, it.y, it.r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = it.type === 'stone'
+      ? (it.color === 'red' ? 'rgba(225,75,75,0.5)' : 'rgba(155,75,225,0.5)')
+      : 'rgba(255,211,92,0.5)';
+    ctx.stroke();
   }
 
   for (const t of telegraphs) {
@@ -582,7 +760,7 @@ function draw() {
     }
   }
 
-  for (const e of enemies) drawEnemy(e);
+  if (enemy.hp > 0) drawEnemy(enemy);
 
   ctx.beginPath();
   ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
@@ -606,18 +784,25 @@ function draw() {
     ctx.fill();
     ctx.globalAlpha = 1;
   }
+
+  playerHpFill.style.width = (Math.max(0, player.hp) / PLAYER_STATS.hpMax * 100) + '%';
+  enemyHpFill.style.width = (Math.max(0, enemy.hp) / ENEMY_DEF.hpMax * 100) + '%';
+  levelXpEl.textContent = 'Lv. ' + eggLevel + '   XP: ' + metaXP.toLocaleString();
+  atkCdFill.style.width = (100 - clamp(player.atkCdTimer / PLAYER_STATS.atkCooldown, 0, 1) * 100) + '%';
+  dashCdFill.style.width = (100 - clamp(player.dashCdTimer / PLAYER_STATS.dashCooldown, 0, 1) * 100) + '%';
 }
 
 let lastTime = performance.now();
 function loop(now) {
   const dt = Math.min(0.033, (now - lastTime) / 1000);
   lastTime = now;
-  update(dt);
+  doUpdate(dt);
+  syncOverlays();
   draw();
+  commitPrevKeys();
   requestAnimationFrame(loop);
 }
 
-resetGame();
 requestAnimationFrame(loop);
 </script>
 </body>
