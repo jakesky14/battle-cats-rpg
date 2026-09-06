@@ -572,9 +572,9 @@ function doUpdate(dt) {
 
   if (menuOpen) {
     if (justPressed('KeyM') || justPressed('ShiftRight') || justPressed('Escape')) menuOpen = false;
-    if (justPressed('Digit1')) menuTab = 'map';
-    if (justPressed('Digit2')) menuTab = 'upgrade';
-    if (justPressed('Digit3')) menuTab = 'items';
+    if (justPressed('Digit1') && menuTab !== 'map') { menuTab = 'map'; renderMenuContent(); }
+    if (justPressed('Digit2') && menuTab !== 'upgrade') { menuTab = 'upgrade'; renderMenuContent(); }
+    if (justPressed('Digit3') && menuTab !== 'items') { menuTab = 'items'; renderMenuContent(); }
     return;
   }
   if (justPressed('KeyM') || justPressed('ShiftRight')) { menuOpen = true; return; }
@@ -671,7 +671,7 @@ function renderMenuContent() {
   }
 }
 document.querySelectorAll('.menu-tabs button').forEach(btn => {
-  btn.addEventListener('click', () => { menuTab = btn.dataset.tab; });
+  btn.addEventListener('click', () => { menuTab = btn.dataset.tab; renderMenuContent(); });
 });
 
 // Click-to-continue fallback in case a keyboard reports the Return/Enter
@@ -691,6 +691,9 @@ msgEl.addEventListener('click', () => {
   else if (gameOver) startGameSession();
 });
 
+let menuWasOpen = false;
+let renderedFrozenMessage = null;
+
 function syncOverlays() {
   titleScreenEl.style.display = screen === 'title' ? 'flex' : 'none';
   cutsceneScreenEl.style.display = screen === 'cutscene' ? 'flex' : 'none';
@@ -698,20 +701,29 @@ function syncOverlays() {
 
   const showMenu = screen === 'game' && menuOpen;
   menuScreenEl.style.display = showMenu ? 'flex' : 'none';
-  if (showMenu) renderMenuContent();
+  // Only rebuild menu DOM on open / explicit tab or purchase actions (see those
+  // call sites) — never on every animation frame. Rebuilding a button's DOM
+  // node while the mouse is mid-click can make the browser drop the click.
+  if (showMenu && !menuWasOpen) renderMenuContent();
+  menuWasOpen = showMenu;
 
   if (screen === 'game' && gameOver) {
     msgEl.style.display = 'block';
+    renderedFrozenMessage = null;
   } else if (screen === 'game' && frozenMessage && !menuOpen) {
-    msgEl.classList.remove('msg-clickable');
-    msgEl.classList.add('msg-tutorial');
-    msgEl.style.color = '#ffe27a';
-    msgEl.innerHTML = frozenMessage + '<div class="msg-sub"><button id="tutorialOkBtn" class="upgrade-btn">OK</button></div>';
+    if (frozenMessage !== renderedFrozenMessage) {
+      renderedFrozenMessage = frozenMessage;
+      msgEl.classList.remove('msg-clickable');
+      msgEl.classList.add('msg-tutorial');
+      msgEl.style.color = '#ffe27a';
+      msgEl.innerHTML = frozenMessage + '<div class="msg-sub"><button id="tutorialOkBtn" class="upgrade-btn">OK</button></div>';
+      const okBtn = document.getElementById('tutorialOkBtn');
+      if (okBtn) okBtn.onclick = () => { frozenMessage = null; };
+    }
     msgEl.style.display = 'block';
-    const okBtn = document.getElementById('tutorialOkBtn');
-    if (okBtn) okBtn.onclick = () => { frozenMessage = null; };
   } else {
     msgEl.style.display = 'none';
+    renderedFrozenMessage = null;
   }
 
   toastsEl.innerHTML = toasts.map(t => `<div class="toast">${t.text}</div>`).join('');
