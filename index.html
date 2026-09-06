@@ -83,6 +83,7 @@
     pointer-events: none;
     display: none;
   }
+  #msg.msg-tutorial, #msg.msg-clickable { pointer-events: auto; cursor: pointer; }
   #msg.msg-tutorial { font-size: 22px; }
   .msg-sub { font-size: 15px; font-weight: normal; margin-top: 10px; opacity: 0.85; }
   #instructions {
@@ -198,19 +199,19 @@
   <div id="msg"></div>
   <div id="instructions">Arrow keys move · Space attack · Left Shift dash · Right Shift (or M) menu · R restart</div>
 
-  <div id="titleScreen">
+  <div id="titleScreen" style="cursor:pointer;">
     <h1>Battle Cats: The Legend of Behemoth Island</h1>
-    <div class="prompt">Press Enter to Start</div>
+    <div class="prompt">Press Enter (or click anywhere) to Start</div>
   </div>
 
-  <div id="cutsceneScreen">
+  <div id="cutsceneScreen" style="cursor:pointer;">
     <div class="cutscene-stage">
       <div class="cutscene-actor">🐱<span>Cat Researcher</span></div>
       <div class="cutscene-egg">🥚</div>
     </div>
     <div class="cutscene-box">
       <div id="cutsceneLine"></div>
-      <div class="prompt">Press Enter to continue ▸</div>
+      <div class="prompt">Press Enter (or click) to continue ▸</div>
     </div>
   </div>
 
@@ -264,10 +265,18 @@ const prevKeys = {};
 
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
-  if (e.code === 'Space' || e.code === 'Enter') e.preventDefault();
+  // Some keyboards/browsers report the Return key with a code other than
+  // "Enter" (e.g. certain layouts report "NumpadEnter"). e.key is the
+  // semantic value and is "Enter" for the main Return/Enter key regardless
+  // of code, so track that too as a fallback.
+  if (e.key === 'Enter') keys['Enter'] = true;
+  if (e.code === 'Space' || e.key === 'Enter') e.preventDefault();
   if (e.code === 'KeyR' && screen === 'game') startGameSession();
 });
-window.addEventListener('keyup', e => keys[e.code] = false);
+window.addEventListener('keyup', e => {
+  keys[e.code] = false;
+  if (e.key === 'Enter') keys['Enter'] = false;
+});
 
 function justPressed(code) { return keys[code] && !prevKeys[code]; }
 function justPressedEnter() {
@@ -601,7 +610,8 @@ function doUpdate(dt) {
 function endGame() {
   gameOver = true;
   msgEl.classList.remove('msg-tutorial');
-  msgEl.textContent = 'YOU DIED — press R to restart';
+  msgEl.classList.add('msg-clickable');
+  msgEl.textContent = 'YOU DIED — press R (or click here) to restart';
   msgEl.style.color = '#ff6b6b';
 }
 
@@ -658,6 +668,23 @@ document.querySelectorAll('.menu-tabs button').forEach(btn => {
   btn.addEventListener('click', () => { menuTab = btn.dataset.tab; });
 });
 
+// Click-to-continue fallback in case a keyboard reports the Return/Enter
+// key in a way justPressedEnter() doesn't recognize.
+titleScreenEl.addEventListener('click', () => {
+  if (screen === 'title') { screen = 'cutscene'; cutsceneIndex = 0; }
+});
+cutsceneScreenEl.addEventListener('click', () => {
+  if (screen === 'cutscene') {
+    cutsceneIndex++;
+    if (cutsceneIndex >= CUTSCENE_LINES.length) startGameSession();
+  }
+});
+msgEl.addEventListener('click', () => {
+  if (screen !== 'game') return;
+  if (frozenMessage) frozenMessage = null;
+  else if (gameOver) startGameSession();
+});
+
 function syncOverlays() {
   titleScreenEl.style.display = screen === 'title' ? 'flex' : 'none';
   cutsceneScreenEl.style.display = screen === 'cutscene' ? 'flex' : 'none';
@@ -670,9 +697,10 @@ function syncOverlays() {
   if (screen === 'game' && gameOver) {
     msgEl.style.display = 'block';
   } else if (screen === 'game' && frozenMessage && !menuOpen) {
+    msgEl.classList.remove('msg-clickable');
     msgEl.classList.add('msg-tutorial');
     msgEl.style.color = '#ffe27a';
-    msgEl.innerHTML = frozenMessage + '<div class="msg-sub">Press Enter to continue</div>';
+    msgEl.innerHTML = frozenMessage + '<div class="msg-sub">Press Enter (or click) to continue</div>';
     msgEl.style.display = 'block';
   } else {
     msgEl.style.display = 'none';
