@@ -201,7 +201,7 @@
 
   <div id="titleScreen" style="cursor:pointer;">
     <h1>Battle Cats: The Legend of Behemoth Island</h1>
-    <div class="prompt">Press Enter (or click anywhere) to Start</div>
+    <div class="prompt">Press any key (or click anywhere) to Start</div>
   </div>
 
   <div id="cutsceneScreen" style="cursor:pointer;">
@@ -211,7 +211,7 @@
     </div>
     <div class="cutscene-box">
       <div id="cutsceneLine"></div>
-      <div class="prompt">Press Enter (or click) to continue ▸</div>
+      <div class="prompt">Press any key (or click) to continue ▸</div>
     </div>
   </div>
 
@@ -262,8 +262,10 @@ const walls = [
 
 const keys = {};
 const prevKeys = {};
+let anyKeyJustPressed = false;
 
 window.addEventListener('keydown', e => {
+  if (!keys[e.code]) anyKeyJustPressed = true;
   keys[e.code] = true;
   // Some keyboards/browsers report the Return key with a code other than
   // "Enter" (e.g. certain layouts report "NumpadEnter"). e.key is the
@@ -280,7 +282,7 @@ window.addEventListener('keyup', e => {
 
 function justPressed(code) { return keys[code] && !prevKeys[code]; }
 function justPressedEnter() {
-  return (keys['Enter'] || keys['NumpadEnter']) && !(prevKeys.Enter || prevKeys.NumpadEnter);
+  return anyKeyJustPressed || ((keys['Enter'] || keys['NumpadEnter']) && !(prevKeys.Enter || prevKeys.NumpadEnter));
 }
 function commitPrevKeys() {
   prevKeys.Space = keys['Space'];
@@ -557,7 +559,10 @@ function doUpdate(dt) {
   }
 
   // screen === 'game'
-  if (gameOver) return;
+  if (gameOver) {
+    if (anyKeyJustPressed) startGameSession();
+    return;
+  }
 
   if (frozenMessage) {
     if (justPressedEnter()) frozenMessage = null;
@@ -611,7 +616,7 @@ function endGame() {
   gameOver = true;
   msgEl.classList.remove('msg-tutorial');
   msgEl.classList.add('msg-clickable');
-  msgEl.textContent = 'YOU DIED — press R (or click here) to restart';
+  msgEl.textContent = 'YOU DIED — press any key (or click here) to restart';
   msgEl.style.color = '#ff6b6b';
 }
 
@@ -700,7 +705,7 @@ function syncOverlays() {
     msgEl.classList.remove('msg-clickable');
     msgEl.classList.add('msg-tutorial');
     msgEl.style.color = '#ffe27a';
-    msgEl.innerHTML = frozenMessage + '<div class="msg-sub">Press Enter (or click) to continue</div>';
+    msgEl.innerHTML = frozenMessage + '<div class="msg-sub">Press any key (or click) to continue</div>';
     msgEl.style.display = 'block';
   } else {
     msgEl.style.display = 'none';
@@ -828,6 +833,7 @@ function loop(now) {
   syncOverlays();
   draw();
   commitPrevKeys();
+  anyKeyJustPressed = false;
   requestAnimationFrame(loop);
 }
 
