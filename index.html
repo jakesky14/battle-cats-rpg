@@ -220,34 +220,37 @@ function hasLineOfSight(x1, y1, x2, y2) {
 }
 
 const PLAYER_STATS = {
-  hpMax: 1000,
-  atk: 100,
-  atkRange: 150,
-  speed: 15,
+  hpMax: 100,
+  atk: 8,
+  atkRange: 140,      // "1250 max range" is the game's theoretical scale, not used directly here
+  speed: 10,
   dashMultiplier: 2,
   dashDuration: 0.25,   // assumption: not specified, tune freely
   dashCooldown: 1.0,    // assumption: not specified, tune freely
-  atkCooldown: 2.0,
-  atkWindup: 0.25,      // assumption: brief wind-up so the telegraph circle is visible
+  atkCooldown: 1.23,
+  foreswing: 0.27,
+  backswing: 0.33,
   radius: 20,
 };
 
-// Only the original enemy's stats were specified. The archer and tank stats
-// below are new assumptions, tuned to feel distinct — adjust freely.
+// Combat stats are uniform across all three enemies per spec. Movement speed
+// (carried over from before) and shape/attack-mode are the only remaining
+// per-type differences.
+const ENEMY_COMMON = {
+  hpMax: 90, atk: 8, atkRange: 110,   // "4000 max range" is the game's theoretical scale, not used directly here
+  atkFrequency: 1.57, foreswing: 0.27, backswing: 0.33,
+};
 const ENEMY_DEFS = {
   grunt: {
-    hpMax: 500, atk: 80, atkRange: 150, speed: 10,
-    atkFrequency: 2.0, atkWindup: 0.3, attackMode: 'melee',
+    ...ENEMY_COMMON, speed: 10, attackMode: 'melee',
     halfSize: 18, color: '#c0392b', shape: 'square',
   },
   archer: {
-    hpMax: 320, atk: 60, atkRange: 320, speed: 8,
-    atkFrequency: 1.8, atkWindup: 0.4, attackMode: 'ranged',
+    ...ENEMY_COMMON, speed: 8, attackMode: 'ranged',
     halfSize: 16, color: '#e0862a', shape: 'triangle', reticleRadius: 55,
   },
   tank: {
-    hpMax: 800, atk: 130, atkRange: 140, speed: 6,
-    atkFrequency: 2.6, atkWindup: 0.45, attackMode: 'melee',
+    ...ENEMY_COMMON, speed: 6, attackMode: 'melee',
     halfSize: 26, color: '#7a3fae', shape: 'square',
   },
 };
@@ -275,7 +278,7 @@ function resetGame() {
       def, x: s.x, y: s.y, r: def.halfSize,
       hp: def.hpMax,
       state: 'chase',
-      windupTimer: 0, cooldownTimer: 0,
+      atkCdTimer: 0,
       hitFlash: 0,
     };
   });
@@ -310,18 +313,24 @@ function updatePlayer(dt) {
   if (player.dashCdTimer > 0) player.dashCdTimer -= dt;
   if (player.hitFlash > 0) player.hitFlash -= dt;
 
+  const lockDuration = PLAYER_STATS.foreswing + PLAYER_STATS.backswing;
+  const elapsed = PLAYER_STATS.atkCooldown - player.atkCdTimer;
+  const locked = player.atkCdTimer > 0 && elapsed < lockDuration;
+
   let mx = 0, my = 0;
-  if (keys['ArrowUp']) my -= 1;
-  if (keys['ArrowDown']) my += 1;
-  if (keys['ArrowLeft']) mx -= 1;
-  if (keys['ArrowRight']) mx += 1;
+  if (!locked) {
+    if (keys['ArrowUp']) my -= 1;
+    if (keys['ArrowDown']) my += 1;
+    if (keys['ArrowLeft']) mx -= 1;
+    if (keys['ArrowRight']) mx += 1;
+  }
   const mlen = Math.hypot(mx, my);
   if (mlen > 0) {
     mx /= mlen; my /= mlen;
     player.facing = Math.atan2(my, mx);
   }
 
-  if (justPressed('ShiftLeft') || justPressed('ShiftRight')) {
+  if (!locked && (justPressed('ShiftLeft') || justPressed('ShiftRight'))) {
     if (player.dashCdTimer <= 0 && !player.isDashing) {
       player.isDashing = true;
       player.dashTimer = PLAYER_STATS.dashDuration;
@@ -329,28 +338,31 @@ function updatePlayer(dt) {
     }
   }
 
-  let speed = PLAYER_STATS.speed * SPEED_SCALE;
-  if (player.isDashing) {
-    speed *= PLAYER_STATS.dashMultiplier;
-    player.dashTimer -= dt;
-    if (player.dashTimer <= 0) player.isDashing = false;
+  if (!locked) {
+    let speed = PLAYER_STATS.speed * SPEED_SCALE;
+    if (player.isDashing) {
+      speed *= PLAYER_STATS.dashMultiplier;
+      player.dashTimer -= dt;
+      if (player.dashTimer <= 0) player.isDashing = false;
+    }
+
+    const moveDx = mlen > 0 ? mx : Math.cos(player.facing);
+    const moveDy = mlen > 0 ? my : Math.sin(player.facing);
+    if (mlen > 0 || player.isDashing) {
+      player.x += moveDx * speed * dt;
+      player.y += moveDy * speed * dt;
+    }
+    resolveObstacles(player);
   }
 
-  const moveDx = mlen > 0 ? mx : Math.cos(player.facing);
-  const moveDy = mlen > 0 ? my : Math.sin(player.facing);
-  if (mlen > 0 || player.isDashing) {
-    player.x += moveDx * speed * dt;
-    player.y += moveDy * speed * dt;
-  }
-  resolveObstacles(player);
-
-  if (justPressed('Space') && player.atkCdTimer <= 0) {
+  if (!locked && justPressed('Space') && player.atkCdTimer <= 0) {
+    player.isDashing = false;
     player.atkCdTimer = PLAYER_STATS.atkCooldown;
     const fx = Math.cos(player.facing), fy = Math.sin(player.facing);
     const r = PLAYER_STATS.atkRange / 2;
     spawnTelegraph(
       player.x + fx * r, player.y + fy * r,
-      r, PLAYER_STATS.atkWindup, PLAYER_STATS.atk, 'enemies',
+      r, PLAYER_STATS.foreswing, PLAYER_STATS.atk, 'enemies',
       player.x, player.y
     );
   }
@@ -359,22 +371,12 @@ function updatePlayer(dt) {
 function updateEnemy(e, dt) {
   if (e.hp <= 0) return;
   if (e.hitFlash > 0) e.hitFlash -= dt;
+  if (e.atkCdTimer > 0) e.atkCdTimer -= dt;
 
-  if (e.state === 'telegraph') {
-    e.windupTimer -= dt;
-    if (e.windupTimer <= 0) {
-      e.state = 'cooldown';
-      e.cooldownTimer = e.def.atkFrequency - e.def.atkWindup;
-    }
-    return;
-  }
-  if (e.state === 'cooldown') {
-    e.cooldownTimer -= dt;
-    if (e.cooldownTimer <= 0) {
-      e.state = hasLineOfSight(e.x, e.y, player.x, player.y) ? 'chase' : 'idle';
-    }
-    return;
-  }
+  const lockDuration = e.def.foreswing + e.def.backswing;
+  const elapsed = e.def.atkFrequency - e.atkCdTimer;
+  const locked = e.atkCdTimer > 0 && elapsed < lockDuration;
+  if (locked) { e.state = 'attacking'; return; }
 
   const canSee = hasLineOfSight(e.x, e.y, player.x, player.y);
   if (!canSee) { e.state = 'idle'; return; }
@@ -386,9 +388,8 @@ function updateEnemy(e, dt) {
     e.x += Math.cos(a) * e.def.speed * SPEED_SCALE * dt;
     e.y += Math.sin(a) * e.def.speed * SPEED_SCALE * dt;
     resolveObstacles(e);
-  } else {
-    e.state = 'telegraph';
-    e.windupTimer = e.def.atkWindup;
+  } else if (e.atkCdTimer <= 0) {
+    e.atkCdTimer = e.def.atkFrequency;
     let cx, cy, r;
     if (e.def.attackMode === 'ranged') {
       cx = player.x; cy = player.y; r = e.def.reticleRadius;
@@ -398,8 +399,9 @@ function updateEnemy(e, dt) {
       cx = e.x + Math.cos(a) * r;
       cy = e.y + Math.sin(a) * r;
     }
-    spawnTelegraph(cx, cy, r, e.def.atkWindup, e.def.atk, 'player', e.x, e.y);
+    spawnTelegraph(cx, cy, r, e.def.foreswing, e.def.atk, 'player', e.x, e.y);
   }
+  // else: in range but still on cooldown from the last attack — just hold position
 }
 
 function updateTelegraphs(dt) {
