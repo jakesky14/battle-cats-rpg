@@ -251,6 +251,7 @@ document.getElementById('cutsceneCatImg').src = CAT_SPRITE_SRC;
 document.getElementById('cutsceneEggImg').src = EGG_SPRITE_SRC;
 
 const playerHpFill = document.querySelector('#playerHp .bar-fill');
+const enemyHpEl = document.getElementById('enemyHp');
 const enemyHpFill = document.querySelector('#enemyHp .bar-fill');
 const levelXpEl = document.getElementById('levelXp');
 const atkCdFill = document.getElementById('atkCd');
@@ -269,14 +270,46 @@ const SPEED_SCALE = 10;
 // Fixed cosmetic wind-up so the red telegraph circle is visible before a hit lands.
 const ATK_WINDUP = 0.2;
 
-const START = { x: 80, y: 300 };
-const ENEMY_SPAWN = { x: 760, y: 300 };
+// Each zone is its own continuously-scrolling world (camera follows the
+// player within it). Crossing an exit rect warps to a connected zone at a
+// given entry point, room-style. Walls: block movement, line of sight, and
+// attacks passing through them; scoped per zone.
+const ZONES = {
+  start: {
+    name: 'Behemoth Outpost',
+    worldW: 1920, worldH: 1200,
+    playerStart: { x: 80, y: 300 },
+    walls: [
+      { x: 420, y: 170, w: 60, h: 260 },   // sits directly between playerStart and the enemy
+      { x: 600, y: 460, w: 140, h: 40 },   // decorative
+      { x: 1300, y: 200, w: 200, h: 40 },
+      { x: 300, y: 800, w: 40, h: 250 },
+      { x: 1500, y: 850, w: 150, h: 150 },
+    ],
+    enemySpawn: { x: 760, y: 300 },
+    exits: [
+      { x: 1890, y: 220, w: 30, h: 200, toZone: 'fields', toX: 90, toY: 320, label: '→ Fields' },
+    ],
+  },
+  fields: {
+    name: 'Fields',
+    worldW: 1400, worldH: 900,
+    walls: [
+      { x: 600, y: 300, w: 200, h: 40 },
+      { x: 900, y: 600, w: 40, h: 200 },
+    ],
+    enemySpawn: null,
+    exits: [
+      { x: 0, y: 220, w: 30, h: 200, toZone: 'start', toX: 1820, toY: 320, label: '← Behemoth Outpost' },
+    ],
+  },
+};
 
-// Walls: block movement, block line of sight, and block attacks passing through them.
-const walls = [
-  { x: 420, y: 170, w: 60, h: 260 },   // sits directly between START and the enemy
-  { x: 600, y: 460, w: 140, h: 40 },   // decorative
-];
+let currentZoneId = 'start';
+let walls = ZONES.start.walls;
+let worldW = ZONES.start.worldW;
+let worldH = ZONES.start.worldH;
+let camera = { x: 0, y: 0 };
 
 const keys = {};
 const prevKeys = {};
@@ -331,13 +364,22 @@ function circleRectPush(x, y, r, rect) {
   if (d === 0) return { x: x, y: y - r };
   return null;
 }
+function circleOverlapsRect(x, y, r, rect) {
+  const cx = clamp(x, rect.x, rect.x + rect.w);
+  const cy = clamp(y, rect.y, rect.y + rect.h);
+  return dist(x, y, cx, cy) < r;
+}
 function resolveObstacles(entity) {
   for (const w of walls) {
     const res = circleRectPush(entity.x, entity.y, entity.r, w);
     if (res) { entity.x = res.x; entity.y = res.y; }
   }
-  entity.x = clamp(entity.x, entity.r, W - entity.r);
-  entity.y = clamp(entity.y, entity.r, H - entity.r);
+  entity.x = clamp(entity.x, entity.r, worldW - entity.r);
+  entity.y = clamp(entity.y, entity.r, worldH - entity.r);
+}
+function updateCamera() {
+  camera.x = clamp(player.x - W / 2, 0, Math.max(0, worldW - W));
+  camera.y = clamp(player.y - H / 2, 0, Math.max(0, worldH - H));
 }
 
 function ccw(ax, ay, bx, by, cx, cy) { return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax); }
@@ -413,25 +455,47 @@ let metaXP = 0;
 let eggLevel = 0;
 const inventory = { stones: { red: 0, purple: 0 } };
 
+function loadZone(zoneId, entryX, entryY) {
+  const zone = ZONES[zoneId];
+  currentZoneId = zoneId;
+  walls = zone.walls;
+  worldW = zone.worldW;
+  worldH = zone.worldH;
+  player.x = entryX;
+  player.y = entryY;
+  enemy = zone.enemySpawn ? {
+    def: ENEMY_DEF, x: zone.enemySpawn.x, y: zone.enemySpawn.y, r: ENEMY_DEF.halfSize,
+    hp: ENEMY_DEF.hpMax, state: 'idle', facingLeft: true, atkCdTimer: 0, hitFlash: 0, lootDropped: false,
+  } : null;
+  telegraphs = [];
+  loot = [];
+  updateCamera();
+}
+
+function checkExits() {
+  for (const ex of ZONES[currentZoneId].exits) {
+    if (circleOverlapsRect(player.x, player.y, player.r, ex)) {
+      loadZone(ex.toZone, ex.toX, ex.toY);
+      addToast('Entered ' + ZONES[ex.toZone].name);
+      return;
+    }
+  }
+}
+
 function startGameSession() {
   screen = 'game';
   player = {
-    x: START.x, y: START.y, r: PLAYER_STATS.radius,
+    x: 0, y: 0, r: PLAYER_STATS.radius,
     hp: PLAYER_STATS.hpMax, facing: 0,
     isDashing: false, dashTimer: 0, dashCdTimer: 0,
     atkCdTimer: 0, hitFlash: 0,
   };
-  enemy = {
-    def: ENEMY_DEF, x: ENEMY_SPAWN.x, y: ENEMY_SPAWN.y, r: ENEMY_DEF.halfSize,
-    hp: ENEMY_DEF.hpMax, state: 'idle', facingLeft: true, atkCdTimer: 0, hitFlash: 0, lootDropped: false,
-  };
-  telegraphs = [];
   particles = [];
-  loot = [];
   toasts = [];
   gameOver = false;
   menuOpen = false;
   tutorialFlags = { spot: false, dash: false };
+  loadZone('start', ZONES.start.playerStart.x, ZONES.start.playerStart.y);
   frozenMessage = 'Use the arrow keys to move!';
 }
 
@@ -527,7 +591,7 @@ function updateTelegraphs(dt) {
         t.resolved = true;
         t.impactFlash = 0.15;
         const targetEntity = t.target === 'enemy' ? enemy : player;
-        if (targetEntity.hp > 0 && dist(t.x, t.y, targetEntity.x, targetEntity.y) < t.r + targetEntity.r &&
+        if (targetEntity && targetEntity.hp > 0 && dist(t.x, t.y, targetEntity.x, targetEntity.y) < t.r + targetEntity.r &&
             hasLineOfSight(t.ownerX, t.ownerY, targetEntity.x, targetEntity.y)) {
           targetEntity.hp -= t.damage;
           targetEntity.hitFlash = 0.2;
@@ -598,12 +662,14 @@ function doUpdate(dt) {
   if (justPressed('KeyM') || justPressed('ShiftRight')) { menuOpen = true; return; }
 
   updatePlayer(dt);
-  updateEnemy(dt);
+  updateCamera();
+  checkExits();
+  if (enemy) updateEnemy(dt);
   updateTelegraphs(dt);
   updateLoot();
   updateToasts(dt);
 
-  if (enemy.hp <= 0 && !enemy.lootDropped) {
+  if (enemy && enemy.hp <= 0 && !enemy.lootDropped) {
     enemy.lootDropped = true;
     const color = Math.random() < 0.5 ? 'red' : 'purple';
     loot.push({ type: 'stone', color, x: enemy.x - 16, y: enemy.y, r: 14 });
@@ -611,11 +677,11 @@ function doUpdate(dt) {
     addToast('Enemy defeated!');
   }
 
-  if (!tutorialFlags.spot && enemy.hp > 0 && hasLineOfSight(enemy.x, enemy.y, player.x, player.y)) {
+  if (enemy && !tutorialFlags.spot && enemy.hp > 0 && hasLineOfSight(enemy.x, enemy.y, player.x, player.y)) {
     tutorialFlags.spot = true;
     frozenMessage = 'The enemy has spotted you! Use the space bar to attack!';
   }
-  if (!tutorialFlags.dash && enemy.hp > 0 && enemy.hp <= enemy.def.hpMax * 0.5) {
+  if (enemy && !tutorialFlags.dash && enemy.hp > 0 && enemy.hp <= enemy.def.hpMax * 0.5) {
     tutorialFlags.dash = true;
     frozenMessage = 'Press Left Shift to dash and dodge enemy attacks! (Right Shift opens the menu)';
   }
@@ -648,7 +714,7 @@ function renderMenuContent() {
   if (menuTab === 'map') {
     html = `
       <h2>Behemoth Island</h2>
-      <p style="opacity:.7">Full island map coming soon — this is just the test arena for now.</p>
+      <p style="opacity:.7">Full island map coming soon. Currently in: <strong>${ZONES[currentZoneId].name}</strong></p>
       <div style="margin-top:20px; width:340px; height:200px; border:2px solid #4aa3ff; border-radius:50%; position:relative;">
         <div style="position:absolute; left:60px; top:90px; width:10px; height:10px; background:#ff5050; border-radius:50%;"></div>
         <div style="position:absolute; left:76px; top:84px; font-size:12px;">You are here</div>
@@ -792,11 +858,36 @@ function draw() {
   }
 
   ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  ctx.translate(-camera.x, -camera.y);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
-  for (let gx = 0; gx < W; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
-  for (let gy = 0; gy < H; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+  const gridStartX = Math.floor(camera.x / 40) * 40, gridEndX = camera.x + W;
+  const gridStartY = Math.floor(camera.y / 40) * 40, gridEndY = camera.y + H;
+  for (let gx = gridStartX; gx <= gridEndX; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, camera.y); ctx.lineTo(gx, camera.y + H); ctx.stroke(); }
+  for (let gy = gridStartY; gy <= gridEndY; gy += 40) { ctx.beginPath(); ctx.moveTo(camera.x, gy); ctx.lineTo(camera.x + W, gy); ctx.stroke(); }
+
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, worldW - 8, worldH - 8);
+
+  for (const ex of ZONES[currentZoneId].exits) {
+    ctx.fillStyle = 'rgba(74,163,255,0.25)';
+    ctx.fillRect(ex.x, ex.y, ex.w, ex.h);
+    ctx.strokeStyle = 'rgba(74,163,255,0.7)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ex.x, ex.y, ex.w, ex.h);
+    ctx.fillStyle = '#dff0ff';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.save();
+    ctx.translate(ex.x + ex.w / 2, ex.y + ex.h / 2);
+    ctx.rotate(ex.w < ex.h ? -Math.PI / 2 : 0);
+    ctx.fillText(ex.label, 0, 0);
+    ctx.restore();
+    ctx.textAlign = 'left';
+  }
 
   for (const w of walls) {
     ctx.fillStyle = '#4a4f42';
@@ -837,7 +928,7 @@ function draw() {
     }
   }
 
-  if (enemy.hp > 0) drawEnemy(enemy);
+  if (enemy && enemy.hp > 0) drawEnemy(enemy);
 
   const spriteScale = 2;
   const spriteW = 23 * spriteScale, spriteH = 24 * spriteScale;
@@ -870,8 +961,11 @@ function draw() {
     ctx.globalAlpha = 1;
   }
 
+  ctx.restore();
+
   playerHpFill.style.width = (Math.max(0, player.hp) / PLAYER_STATS.hpMax * 100) + '%';
-  enemyHpFill.style.width = (Math.max(0, enemy.hp) / ENEMY_DEF.hpMax * 100) + '%';
+  enemyHpEl.style.display = enemy ? '' : 'none';
+  if (enemy) enemyHpFill.style.width = (Math.max(0, enemy.hp) / ENEMY_DEF.hpMax * 100) + '%';
   levelXpEl.textContent = 'Lv. ' + eggLevel + '   XP: ' + metaXP.toLocaleString();
   atkCdFill.style.width = (100 - clamp(player.atkCdTimer / PLAYER_STATS.atkCooldown, 0, 1) * 100) + '%';
   dashCdFill.style.width = (100 - clamp(player.dashCdTimer / PLAYER_STATS.dashCooldown, 0, 1) * 100) + '%';
