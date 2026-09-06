@@ -308,47 +308,46 @@ const INTERACT_RANGE = 60;
 const ZONES = {
   start: {
     name: 'Behemoth Outpost',
-    worldW: 1920, worldH: 1200,
+    worldW: 1000, worldH: 1000,
     playerStart: { x: 80, y: 300 },
     walls: [
-      { x: 420, y: 170, w: 60, h: 260 },   // sits directly between playerStart and the enemy
-      { x: 600, y: 460, w: 140, h: 40 },   // decorative
-      { x: 1300, y: 200, w: 200, h: 40 },
-      { x: 300, y: 800, w: 40, h: 250 },
-      { x: 1500, y: 850, w: 150, h: 150 },
+      { x: 300, y: 170, w: 60, h: 260 },   // sits directly between playerStart and the enemy
+      { x: 700, y: 700, w: 150, h: 150 },  // decorative
+      { x: 150, y: 750, w: 40, h: 200 },   // decorative
     ],
     enemySpawns: [
-      { x: 760, y: 300 },
+      { x: 500, y: 300 },
     ],
     npcs: [],
     exits: [
-      { x: 1890, y: 220, w: 30, h: 200, toZone: 'campsite', toX: 610, toY: 600, label: '→ Campsite' },
+      { x: 400, y: 0, w: 200, h: 30, toZone: 'campsite', toX: 1200, toY: 700, label: '↑ Campsite' },
     ],
   },
   campsite: {
+    // Arriving from Behemoth Outpost's north exit drops the player into the
+    // open, empty middle of this zone. The camp sits far to the west and the
+    // Doges guarding it are clustered far to the east, with a lot of open
+    // ground between the two so neither feels crowded against the other.
     name: 'Campsite',
-    worldW: 1700, worldH: 800,
+    worldW: 2400, worldH: 800,
     walls: [
-      // pocket that the player arrives into from Behemoth Outpost
-      { x: 520, y: 500, w: 20, h: 300 },
-      { x: 700, y: 500, w: 20, h: 300 },
       // tents (also solid obstacles) — the leftmost hides Cat Biologist behind it
       { x: 150, y: 150, w: 80, h: 100, visual: 'tent' },
       { x: 260, y: 150, w: 80, h: 100, visual: 'tent' },
       { x: 370, y: 150, w: 80, h: 100, visual: 'tent' },
-      // obstacles guarding the path back to camp
-      { x: 850, y: 200, w: 30, h: 150 },
-      { x: 1050, y: 150, w: 120, h: 30 },
-      { x: 1300, y: 180, w: 20, h: 250 },
-      { x: 1260, y: 420, w: 100, h: 20 },
+      // obstacles guarding the path back to camp, far to the east
+      { x: 1750, y: 200, w: 30, h: 150 },
+      { x: 1950, y: 150, w: 120, h: 30 },
+      { x: 2200, y: 180, w: 20, h: 250 },
+      { x: 2160, y: 420, w: 100, h: 20 },
     ],
     campfire: { x: 300, y: 300 },
     enemySpawns: [
-      { x: 610, y: 650 },
-      { x: 905, y: 300 },
-      { x: 1080, y: 250 },
-      { x: 1270, y: 300 },
-      { x: 1350, y: 320 },
+      { x: 1650, y: 350 },
+      { x: 1805, y: 300 },
+      { x: 1980, y: 250 },
+      { x: 2170, y: 300 },
+      { x: 2240, y: 320 },
     ],
     npcs: [
       {
@@ -375,7 +374,7 @@ const ZONES = {
       },
     ],
     exits: [
-      { x: 560, y: 770, w: 140, h: 25, toZone: 'start', toX: 1820, toY: 320, label: '← Behemoth Outpost' },
+      { x: 1150, y: 770, w: 150, h: 25, toZone: 'start', toX: 500, toY: 100, label: '↓ Behemoth Outpost' },
     ],
   },
 };
@@ -535,13 +534,13 @@ let cutsceneIndex = 0;
 let player = null, enemies = [], telegraphs = [], particles = [], loot = [], toasts = [], gameOver = false;
 let menuOpen = false, menuTab = 'map';
 let frozenMessage = null;
-let tutorialFlags = { spot: false, dash: false };
 let activeDialogue = null;
 
-// Persistent meta-progression: NOT reset by R, only by a full page reload.
+// Persistent meta-progression: NOT reset by R or death, only by a full page reload.
 let metaXP = 0;
 let eggLevel = 0;
 let eggEvolved2 = false;
+let tutorialFlags = { move: false, spot: false, dash: false };
 const inventory = { stones: { red: 0, purple: 0 } };
 
 function getEggStage() {
@@ -641,9 +640,13 @@ function startGameSession() {
   gameOver = false;
   menuOpen = false;
   activeDialogue = null;
-  tutorialFlags = { spot: false, dash: false };
   loadZone('start', ZONES.start.playerStart.x, ZONES.start.playerStart.y);
-  frozenMessage = 'Use the arrow keys to move!';
+  if (!tutorialFlags.move) {
+    tutorialFlags.move = true;
+    frozenMessage = 'Use the arrow keys to move!';
+  } else {
+    frozenMessage = null;
+  }
 }
 
 function spawnHit(x, y, color) {
