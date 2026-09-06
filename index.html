@@ -237,10 +237,16 @@ const W = canvas.width, H = canvas.height;
 // Pixel-exact crops of the provided sprite sheet (23x24 cat, 20x24 egg).
 const CAT_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABcAAAAYCAYAAAARfGZ1AAAA+0lEQVR4nLVUQRKDMAgsmb7NU57Lyc/RwQa7UkhitTvjiLhsABF6zEECH42CqCNGZjPzF6HWivHI31EiYZEtUcmEFc0vjj8U39AChujxfCkH5rIsQ/F1XVNNFE9bcAb4LbqZ/4g489k+90D0SbrcKazAyaE7hX0FZYZ0xo8YiktS1Uy1Q/ErmBan1oaZduwx0WwLlKxi9pzZ2aFPM/DvpEbUYL3wGW3kYnz7S988Zt62G2xCMZ/BbO9DLsbrPcy8wsnYKt8K5EZ7aRdHcCP6Q6Lx6y07nRaKMj0DjUcN24w2ipcP4GO1/1+5xb+xvkJ/lZxdEb8LY81WkfJfyym5b8enBc8AAAAASUVORK5CYII=';
 const EGG_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAYCAYAAAD6S912AAABG0lEQVR4nGNkwA/+4xBnZCBVgoGB4b/SRh+Gwz/1MCSkw9pw6mXCZdiKZ7IMVSs/YEhs33CI4emqKrAaYg38D3JZ1Wl9MMeW/RKKYZ4BdmA2LkMZ0Q2DKgQbBPIuyBAYgBmGz/uM2AwjFUgjGYorDMkGTJS6Dj08qe5CRkpdhx6WVHchCzUMsUVKq2Avz4mywZrGCAHkNMrT85AhQuoxxMsgw5AliTUMpK8tXABs2JcSebA4PAxJMRRmGMyrVaf1wYaiGEisocj5GQQO/9QDY9sjsZgGEjIUZhhMHlvRxoJNIy5DYS6DyWOLSBZ0AVgpQyjWccmzIBtEDcCIUkKf1scaLqQUYUwwg0GJklyAXB5ilNhkmomvsqMMAAAuznzm4bu9lwAAAABJRU5ErkJggg==';
+// The two enemy frames in the source sheet are an exact horizontal mirror of
+// each other, so only one (17x21) is embedded; the other facing is drawn via
+// a canvas flip, same as the player sprite.
+const ENEMY_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAVCAYAAACg/AXsAAAAqElEQVR4nK2TgQrAIAhENfb/v3xjLcHqTAc7iLa6niYpwoUxsrWuFkAE6H5ka0fIF5D6H++VmjSCYETLCfoyGgPou7maWbQ+0ZrAgZ45y2yD6DhsB22OsqEQBFFP2Rh+c+BDca+1mDhFdFfyvgcSHlZSVOqzPRYZAdjv2XUMNj0yPb+Neu9U9QtE3Xe5Ll6+JuWmE6I0k4qmmqz9MoKsg/km2WqW1eS7AfxYcO1A5plKAAAAAElFTkSuQmCC';
 const catSpriteImg = new Image();
 catSpriteImg.src = CAT_SPRITE_SRC;
 const eggSpriteImg = new Image();
 eggSpriteImg.src = EGG_SPRITE_SRC;
+const enemySpriteImg = new Image();
+enemySpriteImg.src = ENEMY_SPRITE_SRC;
 document.getElementById('cutsceneCatImg').src = CAT_SPRITE_SRC;
 document.getElementById('cutsceneEggImg').src = EGG_SPRITE_SRC;
 
@@ -375,7 +381,7 @@ const PLAYER_STATS = {
 const ENEMY_DEF = {
   hpMax: 90, atk: 8, atkRange: 110,   // "4000 max range" is the game's theoretical scale, not used directly here
   atkFrequency: 1.57, speed: 10,
-  halfSize: 18, color: '#c0392b',
+  halfSize: 18,
 };
 
 // Ancient Egg N101 level costs: index i = XP cost to go from level i to i+1.
@@ -417,7 +423,7 @@ function startGameSession() {
   };
   enemy = {
     def: ENEMY_DEF, x: ENEMY_SPAWN.x, y: ENEMY_SPAWN.y, r: ENEMY_DEF.halfSize,
-    hp: ENEMY_DEF.hpMax, state: 'idle', atkCdTimer: 0, hitFlash: 0, lootDropped: false,
+    hp: ENEMY_DEF.hpMax, state: 'idle', facingLeft: true, atkCdTimer: 0, hitFlash: 0, lootDropped: false,
   };
   telegraphs = [];
   particles = [];
@@ -496,6 +502,7 @@ function updateEnemy(dt) {
   const canSee = hasLineOfSight(enemy.x, enemy.y, player.x, player.y);
   if (!canSee) { enemy.state = 'idle'; return; }
   enemy.state = 'chase';
+  enemy.facingLeft = player.x < enemy.x;
 
   const d = dist(enemy.x, enemy.y, player.x, player.y);
   if (d > enemy.def.atkRange * 0.9) {
@@ -743,18 +750,26 @@ function syncOverlays() {
   toastsEl.innerHTML = toasts.map(t => `<div class="toast">${t.text}</div>`).join('');
 }
 
+const ENEMY_SPRITE_SCALE = 2;
+const ENEMY_SPRITE_W = 17 * ENEMY_SPRITE_SCALE, ENEMY_SPRITE_H = 21 * ENEMY_SPRITE_SCALE;
+
 function drawEnemy(e) {
   if (e.hp <= 0) return;
-  const s = e.def.halfSize;
-  ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.def.color;
-  ctx.fillRect(e.x - s, e.y - s, s * 2, s * 2);
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(e.x - s, e.y - s, s * 2, s * 2);
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  if (!e.facingLeft) ctx.scale(-1, 1);
+  ctx.drawImage(enemySpriteImg, -ENEMY_SPRITE_W / 2, -ENEMY_SPRITE_H / 2, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+  if (e.hitFlash > 0) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillRect(-ENEMY_SPRITE_W / 2, -ENEMY_SPRITE_H / 2, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.restore();
 
   const barW = 40, barH = 5;
   const pct = Math.max(0, e.hp) / e.def.hpMax;
-  const bx = e.x - barW / 2, by = e.y - s - 14;
+  const bx = e.x - barW / 2, by = e.y - ENEMY_SPRITE_H / 2 - 14;
   ctx.fillStyle = '#000a';
   ctx.fillRect(bx, by, barW, barH);
   ctx.fillStyle = '#ff5050';
