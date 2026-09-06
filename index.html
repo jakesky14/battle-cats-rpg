@@ -146,11 +146,11 @@
     align-items: center;
     justify-content: center;
     gap: 100px;
-    font-size: 72px;
   }
   .cutscene-actor { display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .cutscene-actor span { font-size: 14px; }
-  .cutscene-egg { filter: drop-shadow(0 0 14px #ffe27a); }
+  .pixel-sprite { image-rendering: pixelated; image-rendering: crisp-edges; }
+  #cutsceneEggImg { filter: drop-shadow(0 0 14px #ffe27a); }
   .cutscene-box {
     width: 100%;
     background: #000a;
@@ -207,8 +207,8 @@
 
   <div id="cutsceneScreen" style="cursor:pointer;">
     <div class="cutscene-stage">
-      <div class="cutscene-actor">🐱<span>Cat Researcher</span></div>
-      <div class="cutscene-egg">🥚</div>
+      <div class="cutscene-actor"><img id="cutsceneCatImg" class="pixel-sprite" width="115" height="120"><span>Cat Researcher</span></div>
+      <img id="cutsceneEggImg" class="pixel-sprite" width="100" height="120">
     </div>
     <div class="cutscene-box">
       <div id="cutsceneLine"></div>
@@ -231,7 +231,18 @@
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false; // keep the pixel-art sprites crisp when scaled
 const W = canvas.width, H = canvas.height;
+
+// Pixel-exact crops of the provided sprite sheet (23x24 cat, 20x24 egg).
+const CAT_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABcAAAAYCAYAAAARfGZ1AAAA+0lEQVR4nLVUQRKDMAgsmb7NU57Lyc/RwQa7UkhitTvjiLhsABF6zEECH42CqCNGZjPzF6HWivHI31EiYZEtUcmEFc0vjj8U39AChujxfCkH5rIsQ/F1XVNNFE9bcAb4LbqZ/4g489k+90D0SbrcKazAyaE7hX0FZYZ0xo8YiktS1Uy1Q/ErmBan1oaZduwx0WwLlKxi9pzZ2aFPM/DvpEbUYL3wGW3kYnz7S988Zt62G2xCMZ/BbO9DLsbrPcy8wsnYKt8K5EZ7aRdHcCP6Q6Lx6y07nRaKMj0DjUcN24w2ipcP4GO1/1+5xb+xvkJ/lZxdEb8LY81WkfJfyym5b8enBc8AAAAASUVORK5CYII=';
+const EGG_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAYCAYAAAD6S912AAABG0lEQVR4nGNkwA/+4xBnZCBVgoGB4b/SRh+Gwz/1MCSkw9pw6mXCZdiKZ7IMVSs/YEhs33CI4emqKrAaYg38D3JZ1Wl9MMeW/RKKYZ4BdmA2LkMZ0Q2DKgQbBPIuyBAYgBmGz/uM2AwjFUgjGYorDMkGTJS6Dj08qe5CRkpdhx6WVHchCzUMsUVKq2Avz4mywZrGCAHkNMrT85AhQuoxxMsgw5AliTUMpK8tXABs2JcSebA4PAxJMRRmGMyrVaf1wYaiGEisocj5GQQO/9QDY9sjsZgGEjIUZhhMHlvRxoJNIy5DYS6DyWOLSBZ0AVgpQyjWccmzIBtEDcCIUkKf1scaLqQUYUwwg0GJklyAXB5ilNhkmomvsqMMAAAuznzm4bu9lwAAAABJRU5ErkJggg==';
+const catSpriteImg = new Image();
+catSpriteImg.src = CAT_SPRITE_SRC;
+const eggSpriteImg = new Image();
+eggSpriteImg.src = EGG_SPRITE_SRC;
+document.getElementById('cutsceneCatImg').src = CAT_SPRITE_SRC;
+document.getElementById('cutsceneEggImg').src = EGG_SPRITE_SRC;
 
 const playerHpFill = document.querySelector('#playerHp .bar-fill');
 const enemyHpFill = document.querySelector('#enemyHp .bar-fill');
@@ -639,7 +650,10 @@ function renderMenuContent() {
     const cost = eggLevel < MAX_LEVEL ? LEVEL_COSTS[eggLevel] : null;
     const canAfford = cost !== null && metaXP >= cost;
     html = `
-      <h2>Ancient Egg N101</h2>
+      <h2 style="display:flex; align-items:center; gap:12px;">
+        <img src="${EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="48">
+        Ancient Egg N101
+      </h2>
       <p>Level: ${eggLevel} / ${MAX_LEVEL}</p>
       <p>XP: ${metaXP.toLocaleString()}</p>
       ${cost !== null
@@ -810,16 +824,24 @@ function draw() {
 
   if (enemy.hp > 0) drawEnemy(enemy);
 
+  const spriteScale = 2;
+  const spriteW = 23 * spriteScale, spriteH = 24 * spriteScale;
+  const facingLeft = Math.cos(player.facing) < 0;
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  if (facingLeft) ctx.scale(-1, 1);
+  ctx.drawImage(catSpriteImg, -spriteW / 2, -spriteH / 2, spriteW, spriteH);
+  if (player.hitFlash > 0) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillRect(-spriteW / 2, -spriteH / 2, spriteW, spriteH);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.restore();
+
   ctx.beginPath();
-  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-  ctx.fillStyle = player.hitFlash > 0 ? '#ffffff' : '#4aa3ff';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(player.x + Math.cos(player.facing) * player.r, player.y + Math.sin(player.facing) * player.r);
-  ctx.lineTo(player.x + Math.cos(player.facing) * (player.r + 12), player.y + Math.sin(player.facing) * (player.r + 12));
+  ctx.moveTo(player.x + Math.cos(player.facing) * (spriteH / 2 - 4), player.y + Math.sin(player.facing) * (spriteH / 2 - 4));
+  ctx.lineTo(player.x + Math.cos(player.facing) * (spriteH / 2 + 10), player.y + Math.sin(player.facing) * (spriteH / 2 + 10));
   ctx.strokeStyle = '#1c1c1c';
   ctx.lineWidth = 3;
   ctx.stroke();
