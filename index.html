@@ -306,66 +306,46 @@ const INTERACT_RANGE = 60;
 // given entry point, room-style. Walls: block movement, line of sight, and
 // attacks passing through them; scoped per zone.
 const ZONES = {
+  // Rebuilt from a pixel-grid reference image (1 pixel = 40 world units,
+  // walls centered on their cell, spanning the full run of cells they
+  // covered) — a single connected zone per the confirmed redesign: no more
+  // separate Behemoth Outpost/Campsite split, everything below is one world.
   start: {
     name: 'Behemoth Outpost',
-    worldW: 1000, worldH: 1000,
-    playerStart: { x: 80, y: 300 },
+    worldW: 2300, worldH: 1200,
+    playerStart: { x: 920, y: 1020 },
     walls: [
-      { x: 300, y: 170, w: 60, h: 260 },   // sits directly between playerStart and the enemy
-      { x: 700, y: 700, w: 150, h: 150 },  // decorative
-      { x: 150, y: 750, w: 40, h: 200 },   // decorative
+      // small room around the player's entry point — guard enemy is enemySpawns[0]
+      { x: 1013, y: 880, w: 15, h: 240 },
+      // camp divider posts
+      { x: 213, y: 560, w: 15, h: 80 },
+      { x: 453, y: 560, w: 15, h: 80 },
+      { x: 693, y: 560, w: 15, h: 80 },
+      // tent (also a solid obstacle)
+      { x: 480, y: 720, w: 160, h: 80, visual: 'tent' },
+      // obstacle pillar
+      { x: 1200, y: 653, w: 160, h: 15 },
+      { x: 1213, y: 680, w: 15, h: 120 },
+      // corridor walls up to the small room in the northeast
+      { x: 1573, y: 400, w: 15, h: 280 },
+      { x: 2013, y: 400, w: 15, h: 280 },
+      { x: 1840, y: 653, w: 360, h: 15 },
+      // "L" wall inside the northeast room
+      { x: 1813, y: 200, w: 15, h: 200 },
+      { x: 1800, y: 373, w: 200, h: 15 },
     ],
+    campfire: { x: 560, y: 680 },
     enemySpawns: [
-      { x: 500, y: 300 },
-    ],
-    npcs: [],
-    exits: [
-      { x: 400, y: 0, w: 200, h: 30, toZone: 'campsite', toX: 1200, toY: 700, label: '↑ Campsite' },
-    ],
-  },
-  campsite: {
-    // Arriving from Behemoth Outpost's north exit drops the player into the
-    // open, empty middle of this zone. The camp sits far to the west and the
-    // Doges guarding it are clustered far to the east, with a lot of open
-    // ground between the two so neither feels crowded against the other.
-    name: 'Campsite',
-    worldW: 2400, worldH: 800,
-    walls: [
-      // tents (also solid obstacles) — the leftmost hides Cat Biologist behind it
-      { x: 150, y: 150, w: 80, h: 100, visual: 'tent' },
-      { x: 260, y: 150, w: 80, h: 100, visual: 'tent' },
-      { x: 370, y: 150, w: 80, h: 100, visual: 'tent' },
-      // edge of camp, just past the tents
-      { x: 460, y: 100, w: 15, h: 200 },
-      // standalone obstacle guarding the first Doge east of camp
-      { x: 1700, y: 270, w: 15, h: 150 },
-      // 3-sided bracket the second Doge hides inside, open to the right
-      { x: 1750, y: 200, w: 15, h: 150 },
-      { x: 1750, y: 200, w: 60, h: 12 },
-      { x: 1750, y: 338, w: 60, h: 12 },
-      // shelf obstacle for the third Doge
-      { x: 1950, y: 150, w: 120, h: 30 },
-      // hook + post + base guarding the last two Doges
-      { x: 2150, y: 130, w: 70, h: 12 },
-      { x: 2150, y: 130, w: 12, h: 50 },
-      { x: 2200, y: 180, w: 20, h: 250 },
-      { x: 2160, y: 420, w: 100, h: 20 },
-    ],
-    campfire: { x: 300, y: 300 },
-    enemySpawns: [
-      { x: 1650, y: 350 },
-      { x: 1805, y: 300 },
-      { x: 1980, y: 250 },
-      { x: 2170, y: 300 },
-      { x: 2240, y: 320 },
+      { x: 1100, y: 1020 },  // guards the entry room — tutorial hooks key off this one
+      { x: 1900, y: 300 },
+      { x: 1500, y: 500 },
+      { x: 1940, y: 580 },
+      { x: 2100, y: 580 },
+      { x: 1300, y: 740 },
     ],
     npcs: [
       {
-        id: 'explorer', name: 'Cat Explorer', x: 350, y: 310,
-        lines: () => [{ text: "Nice Discovery! Our Biologist is somewhere around the campsite." }],
-      },
-      {
-        id: 'fisherman', name: 'Cat Fisherman', x: 250, y: 310,
+        id: 'fisherman', name: 'Cat Fisherman', x: 420, y: 700,
         lines: () => [
           { text: "Looking for the Biologist?" },
           { text: "...........................................................", slow: true },
@@ -373,7 +353,11 @@ const ZONES = {
         ],
       },
       {
-        id: 'biologist', name: 'Cat Biologist', x: 190, y: 100,
+        id: 'explorer', name: 'Cat Explorer', x: 740, y: 700,
+        lines: () => [{ text: "Nice Discovery! Our Biologist is somewhere around the campsite." }],
+      },
+      {
+        id: 'biologist', name: 'Cat Biologist', x: 100, y: 500,
         lines: () => getEggStage() === 'ancient'
           ? [{ text: "Interesting egg. It seems that the egg needs to be upgraded with XP! Defeat more Doges to gain some!" }]
           : [
@@ -383,9 +367,7 @@ const ZONES = {
             ],
       },
     ],
-    exits: [
-      { x: 1150, y: 770, w: 150, h: 25, toZone: 'start', toX: 500, toY: 100, label: '↓ Behemoth Outpost' },
-    ],
+    exits: [],
   },
 };
 
