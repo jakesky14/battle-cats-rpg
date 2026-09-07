@@ -306,46 +306,55 @@ const INTERACT_RANGE = 60;
 // given entry point, room-style. Walls: block movement, line of sight, and
 // attacks passing through them; scoped per zone.
 const ZONES = {
-  // Rebuilt from a pixel-grid reference image (1 pixel = 40 world units,
-  // walls centered on their cell, spanning the full run of cells they
-  // covered) — a single connected zone per the confirmed redesign: no more
-  // separate Behemoth Outpost/Campsite split, everything below is one world.
+  // Rebuilt from a pixel-grid reference image (1 pixel = 80 world units —
+  // doubled from an earlier pass so the map isn't cramped relative to the
+  // player/enemy sizes — walls centered on their source cell and spanning
+  // the full run of cells they covered, so relative distances match the
+  // drawing exactly). Single connected zone: no Behemoth Outpost/Campsite
+  // split. The drawing's green ground only covered a "plus" shape inside
+  // the 60x30 grid; the four rectangular corners it never touched are
+  // walled off below as out-of-bounds ('void') rather than left open.
   start: {
     name: 'Behemoth Outpost',
-    worldW: 2300, worldH: 1200,
-    playerStart: { x: 920, y: 1020 },
+    worldW: 4800, worldH: 2400,
+    playerStart: { x: 1840, y: 2040 },
     walls: [
+      // out of bounds: the grid's four corners the ground shape never reached
+      { x: 0, y: 0, w: 3440, h: 800, visual: 'void' },
+      { x: 4240, y: 0, w: 560, h: 800, visual: 'void' },
+      { x: 0, y: 1600, w: 1680, h: 800, visual: 'void' },
+      { x: 2480, y: 1600, w: 2320, h: 800, visual: 'void' },
       // small room around the player's entry point — guard enemy is enemySpawns[0]
-      { x: 1013, y: 880, w: 15, h: 240 },
+      { x: 2026, y: 1760, w: 30, h: 480 },
       // camp divider posts
-      { x: 213, y: 560, w: 15, h: 80 },
-      { x: 453, y: 560, w: 15, h: 80 },
-      { x: 693, y: 560, w: 15, h: 80 },
+      { x: 426, y: 1120, w: 30, h: 160 },
+      { x: 906, y: 1120, w: 30, h: 160 },
+      { x: 1386, y: 1120, w: 30, h: 160 },
       // tent (also a solid obstacle)
-      { x: 480, y: 720, w: 160, h: 80, visual: 'tent' },
+      { x: 960, y: 1440, w: 320, h: 160, visual: 'tent' },
       // obstacle pillar
-      { x: 1200, y: 653, w: 160, h: 15 },
-      { x: 1213, y: 680, w: 15, h: 120 },
+      { x: 2400, y: 1306, w: 320, h: 30 },
+      { x: 2426, y: 1360, w: 30, h: 240 },
       // corridor walls up to the small room in the northeast
-      { x: 1573, y: 400, w: 15, h: 280 },
-      { x: 2013, y: 400, w: 15, h: 280 },
-      { x: 1840, y: 653, w: 360, h: 15 },
+      { x: 3146, y: 800, w: 30, h: 560 },
+      { x: 4026, y: 800, w: 30, h: 560 },
+      { x: 3680, y: 1306, w: 720, h: 30 },
       // "L" wall inside the northeast room
-      { x: 1813, y: 200, w: 15, h: 200 },
-      { x: 1800, y: 373, w: 200, h: 15 },
+      { x: 3626, y: 400, w: 30, h: 400 },
+      { x: 3600, y: 746, w: 400, h: 30 },
     ],
-    campfire: { x: 560, y: 680 },
+    campfire: { x: 1120, y: 1360 },
     enemySpawns: [
-      { x: 1100, y: 1020 },  // guards the entry room — tutorial hooks key off this one
-      { x: 1900, y: 300 },
-      { x: 1500, y: 500 },
-      { x: 1940, y: 580 },
-      { x: 2100, y: 580 },
-      { x: 1300, y: 740 },
+      { x: 2200, y: 2040 },  // guards the entry room — tutorial hooks key off this one
+      { x: 3800, y: 600 },
+      { x: 3000, y: 1000 },
+      { x: 3880, y: 1160 },
+      { x: 4200, y: 1160 },
+      { x: 2600, y: 1480 },
     ],
     npcs: [
       {
-        id: 'fisherman', name: 'Cat Fisherman', x: 420, y: 700,
+        id: 'fisherman', name: 'Cat Fisherman', x: 840, y: 1400,
         lines: () => [
           { text: "Looking for the Biologist?" },
           { text: "...........................................................", slow: true },
@@ -353,11 +362,11 @@ const ZONES = {
         ],
       },
       {
-        id: 'explorer', name: 'Cat Explorer', x: 740, y: 700,
+        id: 'explorer', name: 'Cat Explorer', x: 1480, y: 1400,
         lines: () => [{ text: "Nice Discovery! Our Biologist is somewhere around the campsite." }],
       },
       {
-        id: 'biologist', name: 'Cat Biologist', x: 100, y: 500,
+        id: 'biologist', name: 'Cat Biologist', x: 200, y: 1000,
         lines: () => getEggStage() === 'ancient'
           ? [{ text: "Interesting egg. It seems that the egg needs to be upgraded with XP! Defeat more Doges to gain some!" }]
           : [
@@ -453,6 +462,9 @@ function resolveObstacles(entity) {
 function updateCamera() {
   camera.x = clamp(player.x - W / 2, 0, Math.max(0, worldW - W));
   camera.y = clamp(player.y - H / 2, 0, Math.max(0, worldH - H));
+}
+function isOnScreen(x, y) {
+  return x >= camera.x && x <= camera.x + W && y >= camera.y && y <= camera.y + H;
 }
 
 function ccw(ax, ay, bx, by, cx, cy) { return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax); }
@@ -705,7 +717,7 @@ function updateEnemy(e, dt) {
   if (e.hitFlash > 0) e.hitFlash -= dt;
   if (e.atkCdTimer > 0) e.atkCdTimer -= dt;
 
-  const canSee = hasLineOfSight(e.x, e.y, player.x, player.y);
+  const canSee = isOnScreen(e.x, e.y) && hasLineOfSight(e.x, e.y, player.x, player.y);
   if (!canSee) { e.state = 'idle'; return; }
   e.state = 'chase';
   e.facingLeft = player.x < e.x;
@@ -856,7 +868,7 @@ function doUpdate(dt) {
 
   if (currentZoneId === 'start' && enemies[0]) {
     const e = enemies[0];
-    if (!tutorialFlags.spot && e.hp > 0 && hasLineOfSight(e.x, e.y, player.x, player.y)) {
+    if (!tutorialFlags.spot && e.hp > 0 && isOnScreen(e.x, e.y) && hasLineOfSight(e.x, e.y, player.x, player.y)) {
       tutorialFlags.spot = true;
       frozenMessage = 'The enemy has spotted you! Use the space bar to attack!';
     }
@@ -1075,7 +1087,10 @@ function drawEnemy(e) {
 }
 
 function drawWall(w) {
-  if (w.visual === 'tent') {
+  if (w.visual === 'void') {
+    ctx.fillStyle = '#10140d';
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+  } else if (w.visual === 'tent') {
     ctx.fillStyle = '#d8d4c8';
     ctx.beginPath();
     ctx.moveTo(w.x, w.y + w.h);
