@@ -200,11 +200,33 @@
   #dialogueText { font-size: 15px; line-height: 1.4; min-height: 40px; }
   #dialogueText .dialogue-small { font-size: 11px; opacity: 0.8; }
   #dialogueBox .prompt { display: block; margin-top: 8px; font-size: 12px; }
+  #dialogueChoices { display: none; gap: 10px; margin-top: 10px; }
+  #dialogueChoices button {
+    background: #4aa3ff; border: none; color: #fff;
+    padding: 8px 20px; border-radius: 5px; font-size: 14px; cursor: pointer;
+  }
+  #dialogueChoices button.no-btn { background: #555; }
+
+  #testModeBtn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 20;
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  #testModeBtn.active { background: #2e7d32; border-color: #4caf50; color: #fff; }
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="game" width="960" height="600"></canvas>
+  <button id="testModeBtn">Infinite Health: OFF</button>
 
   <div id="hud">
     <div id="playerHp">Player HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
@@ -220,7 +242,8 @@
   <div id="dialogueBox">
     <div id="dialogueName"></div>
     <div id="dialogueText"></div>
-    <div class="prompt">Press Enter (or click) to continue ▸</div>
+    <div id="dialoguePrompt" class="prompt">Press Enter (or click) to continue ▸</div>
+    <div id="dialogueChoices"></div>
   </div>
   <div id="instructions">Arrow keys move · Space attack · Left Shift dash · Right Shift (or M) menu · Enter talk · R restart</div>
 
@@ -293,6 +316,9 @@ const menuContentEl = document.getElementById('menuContent');
 const dialogueBoxEl = document.getElementById('dialogueBox');
 const dialogueNameEl = document.getElementById('dialogueName');
 const dialogueTextEl = document.getElementById('dialogueText');
+const dialoguePromptEl = document.getElementById('dialoguePrompt');
+const dialogueChoicesEl = document.getElementById('dialogueChoices');
+const testModeBtn = document.getElementById('testModeBtn');
 
 // Raw "speed" stats are small design units, not pixels/sec on their own.
 // This converts them to a workable on-screen pace; tune freely.
@@ -326,12 +352,11 @@ const ZONES = {
       { x: 2480, y: 1600, w: 2320, h: 800, visual: 'void' },
       // small room around the player's entry point — guard enemy is enemySpawns[0]
       { x: 2026, y: 1760, w: 30, h: 480 },
-      // camp divider posts
-      { x: 426, y: 1120, w: 30, h: 160 },
-      { x: 906, y: 1120, w: 30, h: 160 },
-      { x: 1386, y: 1120, w: 30, h: 160 },
-      // tent (also a solid obstacle)
-      { x: 960, y: 1440, w: 320, h: 160, visual: 'tent' },
+      // tents (also solid obstacles), north of the campfire — any of them
+      // can be talked to (Enter) to reach Cat Medic inside
+      { x: 341, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
+      { x: 821, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
+      { x: 1301, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
       // obstacle pillar
       { x: 2400, y: 1306, w: 320, h: 30 },
       { x: 2426, y: 1360, w: 30, h: 240 },
@@ -545,6 +570,13 @@ let metaXP = 0;
 let eggLevel = 0;
 let eggEvolved2 = false;
 let tutorialFlags = { move: false, spot: false, dash: false };
+let infiniteHealth = false;
+
+testModeBtn.addEventListener('click', () => {
+  infiniteHealth = !infiniteHealth;
+  testModeBtn.textContent = 'Infinite Health: ' + (infiniteHealth ? 'ON' : 'OFF');
+  testModeBtn.classList.toggle('active', infiniteHealth);
+});
 const inventory = { stones: { red: 0, purple: 0 } };
 
 function getEggStage() {
@@ -586,6 +618,16 @@ function getNearbyNpc() {
   if (!npcs) return null;
   for (const npc of npcs) {
     if (dist(player.x, player.y, npc.x, npc.y) < INTERACT_RANGE) return npc;
+  }
+  return null;
+}
+
+function getNearbyTent() {
+  for (const w of walls) {
+    if (w.interactable === 'medic') {
+      const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+      if (dist(player.x, player.y, cx, cy) < INTERACT_RANGE) return w;
+    }
   }
   return null;
 }
@@ -747,7 +789,7 @@ function updateTelegraphs(dt) {
         if (t.target === 'player') {
           if (player.hp > 0 && dist(t.x, t.y, player.x, player.y) < t.r + player.r &&
               hasLineOfSight(t.ownerX, t.ownerY, player.x, player.y)) {
-            player.hp -= t.damage;
+            if (!infiniteHealth) player.hp -= t.damage;
             player.hitFlash = 0.2;
             spawnHit(player.x, player.y, '#ff6161');
           }
@@ -844,6 +886,17 @@ function doUpdate(dt) {
     if (npc) {
       const parts = npc.lines();
       activeDialogue = { npc, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false };
+      return;
+    }
+    const tent = getNearbyTent();
+    if (tent) {
+      const parts = [{ text: "Are you tired? If so then you can heal up." }];
+      activeDialogue = {
+        npc: { name: 'Cat Medic' }, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false,
+        choice: true, choicesRendered: false,
+        onYes: () => { player.hp = PLAYER_STATS.hpMax; addToast('Healed to full HP!'); },
+        onNo: () => {},
+      };
       return;
     }
   }
@@ -1045,6 +1098,21 @@ function syncOverlays() {
     dialogueNameEl.textContent = activeDialogue.npc.name;
     dialogueTextEl.innerHTML = renderDialogueHtml(activeDialogue);
     dialogueBoxEl.style.display = 'block';
+    const showChoices = !!(activeDialogue.choice && activeDialogue.done);
+    dialoguePromptEl.style.display = showChoices ? 'none' : 'block';
+    dialogueChoicesEl.style.display = showChoices ? 'flex' : 'none';
+    if (showChoices && !activeDialogue.choicesRendered) {
+      activeDialogue.choicesRendered = true;
+      dialogueChoicesEl.innerHTML = '<button id="dlgYesBtn">YES</button><button id="dlgNoBtn" class="no-btn">NO</button>';
+      document.getElementById('dlgYesBtn').onclick = () => {
+        if (activeDialogue && activeDialogue.onYes) activeDialogue.onYes();
+        activeDialogue = null;
+      };
+      document.getElementById('dlgNoBtn').onclick = () => {
+        if (activeDialogue && activeDialogue.onNo) activeDialogue.onNo();
+        activeDialogue = null;
+      };
+    }
   } else {
     dialogueBoxEl.style.display = 'none';
   }
@@ -1190,6 +1258,19 @@ function draw() {
   }
 
   for (const w of walls) drawWall(w);
+  if (!activeDialogue) {
+    for (const w of walls) {
+      if (w.interactable !== 'medic') continue;
+      const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+      if (dist(player.x, player.y, cx, cy) < INTERACT_RANGE) {
+        ctx.fillStyle = '#ffe27a';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Press Enter', cx, w.y - 8);
+        ctx.textAlign = 'left';
+      }
+    }
+  }
   if (ZONES[currentZoneId].campfire) drawCampfire(ZONES[currentZoneId].campfire);
   for (const npc of (ZONES[currentZoneId].npcs || [])) drawNpc(npc);
 
