@@ -300,6 +300,19 @@ enemySpriteImg.src = ENEMY_SPRITE_SRC;
 document.getElementById('cutsceneCatImg').src = CAT_SPRITE_SRC;
 document.getElementById('cutsceneEggImg').src = EGG_SPRITE_SRC;
 
+const BIOLOGIST_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABcAAAAYCAYAAAARfGZ1AAABBUlEQVR4nL1V0Q7CIAy0xG/jic/laT+HKVI8u7YwNV5CZHi9tV13o9semnFGqyAKxEj2tdYToZSC8cifSJZwaz3R5gkzxnlT/KV4xwhYIuLpUt6YOeel+HEcriaKuy24AnwWYeYfws58t88RiF5Jp18KM3By6JfCuoK0Q7pyjliKN6eqnWqX4t9gW5xGG3baMWOs2W5QMovJtbf3bnq3XnUaRA7mhde4Ry7GoyXwa9/dTVbOua8xph2y12fIBSftvzNz9JXy9IdTq3QrMEvLl6Y4og6ivok1fpHZ8bQQivDeyjyCjhFnDC23lBJ/DIhOmf/NcpP+RzKFjJnsLYsfQli7Vbj8B9i1vChyHwO0AAAAAElFTkSuQmCC';
+const EXPLORER_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABcAAAAYCAYAAAARfGZ1AAABaklEQVR4nL1UMU7EMBD0BiSk+wIdD0C6Fok2VWreQMUD7gE84CrecB2Sq7Qn0SLxh/vCSVcgozEZ37LYsYETIzmxndnx7iYZcW0ImT2pBcmMmHDuvY+T5f4l3l8XN24YBh2v+QldTjiEmCgu4ep5cA/vT+khhLGeDgyGXxWPmALc9nDtLNZn96kK8nKwpXxh9n3vahjHsaipxb/11rZCZ04en6FC+y5mM/8l8pnP9a8VIseku1MKA/rLkVMK2wq6FtJP9jWq4qFQVUu1VfG/oFlcpja0tCPF5L7toEqGGNeleenQlDn+TpjUbrOKRJIhwLWdUxQDcYjnX54S3W1W0d04vPdwQzpeBOd2DzzwdbzSO4rhbg/SyK21oNbB3jkNaL34tNHbi7dYojKh7LvQ7WTcdu+SDnsul3ePcQFBupt2wTmAp+OASU/4QgVZkrg0lluDtt5/s9zOPmFfVX9BLo0cfxZktVZR5H8AToggbK75al8AAAAASUVORK5CYII=';
+const HUNTER_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAZCAYAAAC7OJeSAAABeklEQVR4nMVWMZLDIAyEmzwrNRUvSH3Pcn0voKK+fykDQcwahI18XLIzTGRFSGtJCBsjg8wH8CXoaHvc86/CDwlLjduVTeYVzLIcQugMvPc7G5CnM1PfaBtnh4iymkZEEoqeGvtpMszefv/8nu1LEU5tNHamSd0urdsrM6YQw3RXOOdOA8QYj2Ji7MOaUiIEZIYl0cB73xLLflEv9sb2uOcF/9OClf2EELjnutM3KiwBGVoBJNYSkeaMzErRiLN+Umng1E3NAVpFBGGtrT3DqptzrtYxxmivOCWB7Egvudg9ASEJ9B84HIIHhOhdZGqZrpRIKouiPB1mCFCngGAYfCTz81n86Vs7wPRlxykYZ4OfUUZb3N9MYRUIhlMdVqzDHsBfltF2NOz+lBkvvNmoX9h25l679HEViuOWlNS4mst15jqwGDTJ2pq3e4rcdbTmOFP7lsnp0TFOZZP2jOJqZwsp7VUxp29tU8CZgIzkT9XBkuyXAj+0lto/AfQ9Dwq+vgZ3AAAAAElFTkSuQmCC';
+const BEHEMOTH_BASE_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABcAAAA2CAYAAAAs2gIzAAADRklEQVR4nLVXPW8TQRCdM5aCKNJQEUgihTSACBJSOqcjdmNCBUFBkRBp4C+YGteI2hAkhBSbKnAFNqFyOqoQJCqKJLJpACErBaZZNHs7q9m9vbs9xzxp5bv9ePN2Znb2DBCHUO3ECGxiMVADk7nWOVFMGxSDBOZJuTMvAzFOiHYgfl6Yj55tDPxcV3AJAwD4dXleqw+CkUQmqxdKHf7q5zEo1xBCxALb/D7DX0fKKiEVK8T8rpSHYZi6g1TlhIg/wpe/H4Fjf7gjp4ADaZESGMzm8bR8uXJ2Uw9cnbhBa1G97KtWq1l8cQPgbsac/eGO00VZbgkSmjFH7QTmtqV6bSBpG2KE8ZiLEpX3WjVDhcd4oEj93NLLb+BEgRQZARZz21XdV/TJ7/6bx0b/1O0n+pnVHSSGZ6ceQhXC9IAJRUyLlQskMfXxOb75Ljh0Cfbos3OdLAjf458GtSOtWvuctoXArXFCXORrgKNIyc9zNAxDw4/0bhskJBlOzRbC7PJpsOGzk8ySe3z9ERx8+BPrR+XUEM/vLeVTPisVb8IBxMnzxECmETVQ71v9af3ea9WM1MOTyIHjdtZ5pWJPHaClic9QX9yLnnfXjTnn79Rj6xJLZk8RErqlV05SIsa16EaKD3IY5Fv9abg7dURGha0YifG5O1ywFcv5/F6lC4Qrz1sNhaM6ap6CXewxC7A11kpQLpflAP7yRn00F3fsqu0FVyVEtH6cgU6nIxfjL4H3VSoVuPj2puxHd9lxKtrEvHajOjr2vMziM+2g1vwNqyuHAIsz0IU9PjdIPUQdpdIubNzAxuuu/sSrfbomjdjK47dMo6KVE6GUo95JuXTJ7rpOVWkAjrJry4OXXw2lrtJLbpQGhgv6kGWSv7h/yVBPyrGPDNuIlKu5rkwhYDakod1uG+rJpRRQTY55jcAAcaT9q0iqjPZ1J6scflC6LuK05gIdJsPnt94/9VLMwee5LgyErN3YSH2emsLRWCvF6rp0C5LTpZCHHAkz3bJ67tD4VMsDl0s0+beVdzBuFMZFtGGlMIf0Nb+EYQwBHZtyl991VRw1kD5I2prI6xb+z8JJjhiFnM7Kf/F5ndXysZLTVYcHkeD1OTcign8aXS3tCQWEVQAAAABJRU5ErkJggg==';
+const biologistSpriteImg = new Image();
+biologistSpriteImg.src = BIOLOGIST_SPRITE_SRC;
+const explorerSpriteImg = new Image();
+explorerSpriteImg.src = EXPLORER_SPRITE_SRC;
+const hunterSpriteImg = new Image();
+hunterSpriteImg.src = HUNTER_SPRITE_SRC;
+const behemothBaseSpriteImg = new Image();
+behemothBaseSpriteImg.src = BEHEMOTH_BASE_SPRITE_SRC;
+
 const playerHpFill = document.querySelector('#playerHp .bar-fill');
 const enemyHpEl = document.getElementById('enemyHp');
 const enemyHpFill = document.querySelector('#enemyHp .bar-fill');
@@ -357,6 +370,8 @@ const ZONES = {
       { x: 341, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
       { x: 821, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
       { x: 1301, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
+      // Behemoth Base save point, north of the (now much bigger) campfire
+      { x: 1085, y: 1080, w: 70, h: 165, visual: 'behemothBase', interactable: 'save' },
       // obstacle pillar
       { x: 2400, y: 1306, w: 320, h: 30 },
       { x: 2426, y: 1360, w: 30, h: 240 },
@@ -379,7 +394,8 @@ const ZONES = {
     ],
     npcs: [
       {
-        id: 'fisherman', name: 'Cat Fisherman', x: 840, y: 1400,
+        id: 'hunter', name: 'Cat Hunter', x: 840, y: 1400,
+        sprite: hunterSpriteImg, spriteW: 70, spriteH: 50,
         lines: () => [
           { text: "Looking for the Biologist?" },
           { text: "...........................................................", slow: true },
@@ -388,10 +404,12 @@ const ZONES = {
       },
       {
         id: 'explorer', name: 'Cat Explorer', x: 1480, y: 1400,
+        sprite: explorerSpriteImg, spriteW: 46, spriteH: 48,
         lines: () => [{ text: "Nice Discovery! Our Biologist is somewhere around the campsite." }],
       },
       {
         id: 'biologist', name: 'Cat Biologist', x: 200, y: 1000,
+        sprite: biologistSpriteImg, spriteW: 46, spriteH: 48,
         lines: () => getEggStage() === 'ancient'
           ? [{ text: "Interesting egg. It seems that the egg needs to be upgraded with XP! Defeat more Doges to gain some!" }]
           : [
@@ -577,6 +595,41 @@ testModeBtn.addEventListener('click', () => {
   testModeBtn.textContent = 'Infinite Health: ' + (infiniteHealth ? 'ON' : 'OFF');
   testModeBtn.classList.toggle('active', infiniteHealth);
 });
+
+// Behemoth Base save points: persist progress to localStorage and move the
+// respawn point to wherever the player last saved.
+const SAVE_KEY = 'battleCatsBehemothIslandSave';
+let respawnPoint = { x: ZONES.start.playerStart.x, y: ZONES.start.playerStart.y };
+
+function saveGame() {
+  respawnPoint = { x: player.x, y: player.y };
+  const data = {
+    metaXP, eggLevel, eggEvolved2,
+    stonesRed: inventory.stones.red, stonesPurple: inventory.stones.purple,
+    tutorialFlags: { ...tutorialFlags },
+    respawnX: respawnPoint.x, respawnY: respawnPoint.y,
+  };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) { /* storage unavailable */ }
+  addToast('Game saved at Behemoth Base!');
+}
+function loadSavedGame() {
+  let raw;
+  try { raw = localStorage.getItem(SAVE_KEY); } catch (e) { return; }
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    metaXP = data.metaXP || 0;
+    eggLevel = data.eggLevel || 0;
+    eggEvolved2 = !!data.eggEvolved2;
+    inventory.stones.red = data.stonesRed || 0;
+    inventory.stones.purple = data.stonesPurple || 0;
+    if (data.tutorialFlags) tutorialFlags = { ...tutorialFlags, ...data.tutorialFlags };
+    if (data.respawnX != null && data.respawnY != null) {
+      respawnPoint = { x: data.respawnX, y: data.respawnY };
+    }
+  } catch (e) { /* corrupt save, ignore */ }
+}
+loadSavedGame();
 const inventory = { stones: { red: 0, purple: 0 } };
 
 function getEggStage() {
@@ -622,12 +675,12 @@ function getNearbyNpc() {
   return null;
 }
 
-function getNearbyTent() {
+function getNearbyInteractableWall(type) {
   for (const w of walls) {
-    if (w.interactable === 'medic') {
-      const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
-      if (dist(player.x, player.y, cx, cy) < INTERACT_RANGE) return w;
-    }
+    // These are solid, so measure to the nearest edge, not the center — the
+    // player's own collision with the wall keeps them well away from its
+    // center for anything but a tiny one.
+    if (w.interactable === type && circleOverlapsRect(player.x, player.y, INTERACT_RANGE, w)) return w;
   }
   return null;
 }
@@ -686,7 +739,7 @@ function startGameSession() {
   gameOver = false;
   menuOpen = false;
   activeDialogue = null;
-  loadZone('start', ZONES.start.playerStart.x, ZONES.start.playerStart.y);
+  loadZone('start', respawnPoint.x, respawnPoint.y);
   if (!tutorialFlags.move) {
     tutorialFlags.move = true;
     frozenMessage = 'Use the arrow keys to move!';
@@ -888,7 +941,7 @@ function doUpdate(dt) {
       activeDialogue = { npc, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false };
       return;
     }
-    const tent = getNearbyTent();
+    const tent = getNearbyInteractableWall('medic');
     if (tent) {
       const parts = [{ text: "Are you tired? If so then you can heal up." }];
       activeDialogue = {
@@ -897,6 +950,10 @@ function doUpdate(dt) {
         onYes: () => { player.hp = PLAYER_STATS.hpMax; addToast('Healed to full HP!'); },
         onNo: () => {},
       };
+      return;
+    }
+    if (getNearbyInteractableWall('save')) {
+      saveGame();
       return;
     }
   }
@@ -1158,6 +1215,8 @@ function drawWall(w) {
   if (w.visual === 'void') {
     ctx.fillStyle = '#10140d';
     ctx.fillRect(w.x, w.y, w.w, w.h);
+  } else if (w.visual === 'behemothBase') {
+    ctx.drawImage(behemothBaseSpriteImg, w.x, w.y, w.w, w.h);
   } else if (w.visual === 'tent') {
     ctx.fillStyle = '#d8d4c8';
     ctx.beginPath();
@@ -1179,41 +1238,37 @@ function drawWall(w) {
 }
 
 function drawCampfire(c) {
+  // 4x the original size
   ctx.beginPath();
-  ctx.arc(c.x, c.y, 12, 0, Math.PI * 2);
+  ctx.arc(c.x, c.y, 48, 0, Math.PI * 2);
   ctx.fillStyle = '#5a3a1a';
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(c.x, c.y - 20);
-  ctx.lineTo(c.x - 8, c.y - 2);
-  ctx.lineTo(c.x + 8, c.y - 2);
+  ctx.moveTo(c.x, c.y - 80);
+  ctx.lineTo(c.x - 32, c.y - 8);
+  ctx.lineTo(c.x + 32, c.y - 8);
   ctx.closePath();
   ctx.fillStyle = '#ff8c30';
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(c.x, c.y - 12);
-  ctx.lineTo(c.x - 4, c.y - 2);
-  ctx.lineTo(c.x + 4, c.y - 2);
+  ctx.moveTo(c.x, c.y - 48);
+  ctx.lineTo(c.x - 16, c.y - 8);
+  ctx.lineTo(c.x + 16, c.y - 8);
   ctx.closePath();
   ctx.fillStyle = '#ffe27a';
   ctx.fill();
 }
 
 function drawNpc(npc) {
-  ctx.beginPath();
-  ctx.arc(npc.x, npc.y, 16, 0, Math.PI * 2);
-  ctx.fillStyle = '#7fd97f';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  const w = npc.spriteW || 32, h = npc.spriteH || 32;
+  ctx.drawImage(npc.sprite, npc.x - w / 2, npc.y - h / 2, w, h);
   ctx.fillStyle = '#fff';
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(npc.name, npc.x, npc.y - 24);
+  ctx.fillText(npc.name, npc.x, npc.y - h / 2 - 10);
   if (!activeDialogue && dist(player.x, player.y, npc.x, npc.y) < INTERACT_RANGE) {
     ctx.fillStyle = '#ffe27a';
-    ctx.fillText('Press Enter', npc.x, npc.y + 32);
+    ctx.fillText('Press Enter', npc.x, npc.y + h / 2 + 16);
   }
   ctx.textAlign = 'left';
 }
@@ -1260,13 +1315,12 @@ function draw() {
   for (const w of walls) drawWall(w);
   if (!activeDialogue) {
     for (const w of walls) {
-      if (w.interactable !== 'medic') continue;
-      const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
-      if (dist(player.x, player.y, cx, cy) < INTERACT_RANGE) {
+      if (!w.interactable) continue;
+      if (circleOverlapsRect(player.x, player.y, INTERACT_RANGE, w)) {
         ctx.fillStyle = '#ffe27a';
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Press Enter', cx, w.y - 8);
+        ctx.fillText('Press Enter', w.x + w.w / 2, w.y - 8);
         ctx.textAlign = 'left';
       }
     }
