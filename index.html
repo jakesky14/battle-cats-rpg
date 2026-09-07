@@ -138,6 +138,11 @@
     max-width: 700px;
   }
   .prompt { font-size: 15px; opacity: 0.85; animation: pulse 1.4s ease-in-out infinite; }
+  #loadSlots { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
+  #loadSlots button {
+    background: #333; border: 1px solid #555; color: #eee;
+    padding: 8px 18px; border-radius: 5px; font-size: 13px; cursor: pointer;
+  }
 
   #cutsceneScreen { justify-content: space-between; }
   .cutscene-stage {
@@ -249,7 +254,8 @@
 
   <div id="titleScreen" style="cursor:pointer;">
     <h1>Battle Cats: The Legend of Behemoth Island</h1>
-    <div class="prompt">Press any key (or click anywhere) to Start</div>
+    <div class="prompt">Press any key (or click anywhere) to Start a New Game</div>
+    <div id="loadSlots"></div>
   </div>
 
   <div id="cutsceneScreen" style="cursor:pointer;">
@@ -322,6 +328,7 @@ const dashCdFill = document.getElementById('dashCd');
 const msgEl = document.getElementById('msg');
 const toastsEl = document.getElementById('toasts');
 const titleScreenEl = document.getElementById('titleScreen');
+const loadSlotsEl = document.getElementById('loadSlots');
 const cutsceneScreenEl = document.getElementById('cutsceneScreen');
 const cutsceneLineEl = document.getElementById('cutsceneLine');
 const menuScreenEl = document.getElementById('menuScreen');
@@ -596,41 +603,67 @@ testModeBtn.addEventListener('click', () => {
   testModeBtn.classList.toggle('active', infiniteHealth);
 });
 
-// Behemoth Base save points: persist progress to localStorage and move the
-// respawn point to wherever the player last saved.
-const SAVE_KEY = 'battleCatsBehemothIslandSave';
+const inventory = { stones: { red: 0, purple: 0 } };
 let respawnPoint = { x: ZONES.start.playerStart.x, y: ZONES.start.playerStart.y };
 
-function saveGame() {
-  respawnPoint = { x: player.x, y: player.y };
-  const data = {
+// Behemoth Base save points: 3 independent slots in localStorage. Saving
+// also moves the in-session respawn point to wherever the player saved.
+const SAVE_SLOT_COUNT = 3;
+const SAVE_KEY_PREFIX = 'battleCatsBehemothIslandSave_slot';
+
+function readSaveSlot(slot) {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY_PREFIX + slot);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function writeSaveSlot(slot, data) {
+  try { localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data)); } catch (e) { /* storage unavailable */ }
+}
+function currentSaveData() {
+  return {
     metaXP, eggLevel, eggEvolved2,
     stonesRed: inventory.stones.red, stonesPurple: inventory.stones.purple,
     tutorialFlags: { ...tutorialFlags },
-    respawnX: respawnPoint.x, respawnY: respawnPoint.y,
+    respawnX: player.x, respawnY: player.y,
+    savedAt: Date.now(),
   };
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) { /* storage unavailable */ }
-  addToast('Game saved at Behemoth Base!');
 }
-function loadSavedGame() {
-  let raw;
-  try { raw = localStorage.getItem(SAVE_KEY); } catch (e) { return; }
-  if (!raw) return;
-  try {
-    const data = JSON.parse(raw);
-    metaXP = data.metaXP || 0;
-    eggLevel = data.eggLevel || 0;
-    eggEvolved2 = !!data.eggEvolved2;
-    inventory.stones.red = data.stonesRed || 0;
-    inventory.stones.purple = data.stonesPurple || 0;
-    if (data.tutorialFlags) tutorialFlags = { ...tutorialFlags, ...data.tutorialFlags };
-    if (data.respawnX != null && data.respawnY != null) {
-      respawnPoint = { x: data.respawnX, y: data.respawnY };
-    }
-  } catch (e) { /* corrupt save, ignore */ }
+function applySaveData(data) {
+  metaXP = data.metaXP || 0;
+  eggLevel = data.eggLevel || 0;
+  eggEvolved2 = !!data.eggEvolved2;
+  inventory.stones.red = data.stonesRed || 0;
+  inventory.stones.purple = data.stonesPurple || 0;
+  if (data.tutorialFlags) tutorialFlags = { ...tutorialFlags, ...data.tutorialFlags };
+  if (data.respawnX != null && data.respawnY != null) {
+    respawnPoint = { x: data.respawnX, y: data.respawnY };
+  }
 }
-loadSavedGame();
-const inventory = { stones: { red: 0, purple: 0 } };
+function openSaveMenu() {
+  const choices = [];
+  for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
+    const existing = readSaveSlot(slot);
+    const label = existing
+      ? `Slot ${slot}: Lv ${existing.eggLevel} · ${(existing.metaXP || 0).toLocaleString()} XP`
+      : `Slot ${slot}: Empty`;
+    choices.push({
+      label,
+      onSelect: () => {
+        const data = currentSaveData();
+        writeSaveSlot(slot, data);
+        respawnPoint = { x: data.respawnX, y: data.respawnY };
+        addToast('Saved to Slot ' + slot + '!');
+      },
+    });
+  }
+  activeDialogue = {
+    npc: { name: 'Behemoth Base' },
+    ...buildDialogueText([{ text: 'Choose a save slot:' }]),
+    revealLength: 0, charTimer: 0, done: false,
+    choice: true, choicesRendered: false, choices,
+  };
+}
 
 function getEggStage() {
   if (eggEvolved2) return 'evolved2';
@@ -648,6 +681,7 @@ function loadZone(zoneId, entryX, entryY) {
   player.y = entryY;
   enemies = (zone.enemySpawns || []).map(s => ({
     def: ENEMY_DEF, x: s.x, y: s.y, r: ENEMY_DEF.halfSize,
+    spawnX: s.x, spawnY: s.y, offscreenTimer: 0,
     hp: ENEMY_DEF.hpMax, state: 'idle', facingLeft: true, atkCdTimer: 0, hitFlash: 0, lootDropped: false,
   }));
   telegraphs = [];
@@ -666,23 +700,29 @@ function checkExits() {
   }
 }
 
-function getNearbyNpc() {
-  const npcs = ZONES[currentZoneId].npcs;
-  if (!npcs) return null;
+// Picks whichever interactable (NPC or solid wall like a tent/save point) is
+// actually closest, rather than checking in a fixed order — two nearby
+// interactables can both be within INTERACT_RANGE at once (e.g. a tent and
+// the Behemoth Base only ~64 units apart with a 60-unit range), and a fixed
+// checking order would always let one silently win, making the other seem
+// broken.
+function getNearestInteractable() {
+  let best = null, bestDist = INTERACT_RANGE;
+  const npcs = ZONES[currentZoneId].npcs || [];
   for (const npc of npcs) {
-    if (dist(player.x, player.y, npc.x, npc.y) < INTERACT_RANGE) return npc;
+    const d = dist(player.x, player.y, npc.x, npc.y);
+    if (d < bestDist) { bestDist = d; best = { type: 'npc', target: npc }; }
   }
-  return null;
-}
-
-function getNearbyInteractableWall(type) {
   for (const w of walls) {
-    // These are solid, so measure to the nearest edge, not the center — the
+    if (!w.interactable) continue;
+    // Walls are solid, so measure to the nearest edge, not the center — the
     // player's own collision with the wall keeps them well away from its
     // center for anything but a tiny one.
-    if (w.interactable === type && circleOverlapsRect(player.x, player.y, INTERACT_RANGE, w)) return w;
+    const cx = clamp(player.x, w.x, w.x + w.w), cy = clamp(player.y, w.y, w.y + w.h);
+    const d = dist(player.x, player.y, cx, cy);
+    if (d < bestDist) { bestDist = d; best = { type: w.interactable, target: w }; }
   }
-  return null;
+  return best;
 }
 
 const DIALOGUE_CHAR_INTERVAL = 0.08;
@@ -807,7 +847,28 @@ function updatePlayer(dt) {
   }
 }
 
+const ENEMY_RESPAWN_OFFSCREEN_TIME = 60;
 function updateEnemy(e, dt) {
+  // Respawns the enemy (alive or dead) once its spawn point has been off
+  // camera continuously for a full minute, regardless of the enemy's own
+  // current (possibly wandered-off) position.
+  if (isOnScreen(e.spawnX, e.spawnY)) {
+    e.offscreenTimer = 0;
+  } else {
+    e.offscreenTimer += dt;
+    if (e.offscreenTimer >= ENEMY_RESPAWN_OFFSCREEN_TIME) {
+      e.hp = e.def.hpMax;
+      e.x = e.spawnX;
+      e.y = e.spawnY;
+      e.state = 'idle';
+      e.facingLeft = true;
+      e.atkCdTimer = 0;
+      e.hitFlash = 0;
+      e.lootDropped = false;
+      e.offscreenTimer = 0;
+    }
+  }
+
   if (e.hp <= 0) return;
   if (e.hitFlash > 0) e.hitFlash -= dt;
   if (e.atkCdTimer > 0) e.atkCdTimer -= dt;
@@ -935,25 +996,24 @@ function doUpdate(dt) {
   if (justPressed('KeyM') || justPressed('ShiftRight')) { menuOpen = true; return; }
 
   if (justPressedEnterKeyOnly()) {
-    const npc = getNearbyNpc();
-    if (npc) {
-      const parts = npc.lines();
-      activeDialogue = { npc, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false };
-      return;
-    }
-    const tent = getNearbyInteractableWall('medic');
-    if (tent) {
-      const parts = [{ text: "Are you tired? If so then you can heal up." }];
-      activeDialogue = {
-        npc: { name: 'Cat Medic' }, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false,
-        choice: true, choicesRendered: false,
-        onYes: () => { player.hp = PLAYER_STATS.hpMax; addToast('Healed to full HP!'); },
-        onNo: () => {},
-      };
-      return;
-    }
-    if (getNearbyInteractableWall('save')) {
-      saveGame();
+    const near = getNearestInteractable();
+    if (near) {
+      if (near.type === 'npc') {
+        const parts = near.target.lines();
+        activeDialogue = { npc: near.target, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false };
+      } else if (near.type === 'medic') {
+        const parts = [{ text: "Are you tired? If so then you can heal up." }];
+        activeDialogue = {
+          npc: { name: 'Cat Medic' }, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false,
+          choice: true, choicesRendered: false,
+          choices: [
+            { label: 'YES', onSelect: () => { player.hp = PLAYER_STATS.hpMax; addToast('Healed to full HP!'); } },
+            { label: 'NO', onSelect: () => {} },
+          ],
+        };
+      } else if (near.type === 'save') {
+        openSaveMenu();
+      }
       return;
     }
   }
@@ -1090,6 +1150,26 @@ document.querySelectorAll('.menu-tabs button').forEach(btn => {
   btn.addEventListener('click', () => { menuTab = btn.dataset.tab; renderMenuContent(); });
 });
 
+function renderTitleLoadSlots() {
+  let html = '';
+  for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
+    const data = readSaveSlot(slot);
+    if (data) {
+      html += `<button data-load-slot="${slot}">Continue Slot ${slot} — Lv ${data.eggLevel} · ${(data.metaXP || 0).toLocaleString()} XP</button>`;
+    }
+  }
+  loadSlotsEl.innerHTML = html;
+  loadSlotsEl.querySelectorAll('[data-load-slot]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation(); // don't also trigger titleScreenEl's "start new game" click
+      const data = readSaveSlot(parseInt(btn.dataset.loadSlot, 10));
+      applySaveData(data);
+      startGameSession();
+    });
+  });
+}
+renderTitleLoadSlots();
+
 // Click-to-continue fallback in case a keyboard reports the Return/Enter
 // key in a way justPressedEnter() doesn't recognize.
 titleScreenEl.addEventListener('click', () => {
@@ -1160,15 +1240,15 @@ function syncOverlays() {
     dialogueChoicesEl.style.display = showChoices ? 'flex' : 'none';
     if (showChoices && !activeDialogue.choicesRendered) {
       activeDialogue.choicesRendered = true;
-      dialogueChoicesEl.innerHTML = '<button id="dlgYesBtn">YES</button><button id="dlgNoBtn" class="no-btn">NO</button>';
-      document.getElementById('dlgYesBtn').onclick = () => {
-        if (activeDialogue && activeDialogue.onYes) activeDialogue.onYes();
-        activeDialogue = null;
-      };
-      document.getElementById('dlgNoBtn').onclick = () => {
-        if (activeDialogue && activeDialogue.onNo) activeDialogue.onNo();
-        activeDialogue = null;
-      };
+      dialogueChoicesEl.innerHTML = activeDialogue.choices
+        .map((c, i) => `<button data-choice-idx="${i}"${i > 0 ? ' class="no-btn"' : ''}>${escapeHtml(c.label)}</button>`)
+        .join('');
+      activeDialogue.choices.forEach((c, i) => {
+        dialogueChoicesEl.querySelector(`[data-choice-idx="${i}"]`).onclick = () => {
+          c.onSelect();
+          activeDialogue = null;
+        };
+      });
     }
   } else {
     dialogueBoxEl.style.display = 'none';
