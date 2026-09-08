@@ -460,12 +460,12 @@ const ZONES = {
       },
       {
         id: 'engineer', name: 'Engineer Cat', x: 1195, y: 1163, // right of the Behemoth Base
-        sprite: engineerCatSpriteImg, spriteW: 44, spriteH: 40,
+        sprite: engineerCatSpriteImg, spriteW: 74, spriteH: 52,
         lines: () => [{ text: "You can save progress at behemoth bases!" }],
       },
       {
         id: 'chef', name: 'Chef Cat', x: 441, y: 1340, // in front of the leftmost tent
-        sprite: chefCatSpriteImg, spriteW: 40, spriteH: 42,
+        sprite: chefCatSpriteImg, spriteW: 66, spriteH: 58,
         lines: () => [{ text: "If you're feeling tired, you can always see Medic Cat, he's always in the tents." }],
       },
       {
@@ -1829,7 +1829,7 @@ function drawBagProp() {
 function drawHealCutsceneMedic() {
   const hc = healCutscene;
   if (!hc || hc.phase === 'black') return;
-  const w = 36, h = 36;
+  const w = 54, h = 48;
   ctx.drawImage(medicCatSpriteImg, hc.x - w / 2, hc.y - h / 2, w, h);
   ctx.fillStyle = '#fff';
   ctx.font = '11px sans-serif';
