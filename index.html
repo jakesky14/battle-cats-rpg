@@ -116,7 +116,7 @@
   @keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-  #titleScreen, #cutsceneScreen, #menuScreen {
+  #titleScreen, #cutsceneScreen, #menuScreen, #chooseFileScreen {
     position: absolute;
     inset: 4px;
     z-index: 10;
@@ -138,8 +138,8 @@
     max-width: 700px;
   }
   .prompt { font-size: 15px; opacity: 0.85; animation: pulse 1.4s ease-in-out infinite; }
-  #loadSlots { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
-  #loadSlots button {
+  #chooseFileSlots { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
+  #chooseFileSlots button {
     background: #333; border: 1px solid #555; color: #eee;
     padding: 8px 18px; border-radius: 5px; font-size: 13px; cursor: pointer;
   }
@@ -226,6 +226,15 @@
     cursor: pointer;
   }
   #testModeBtn.active { background: #2e7d32; border-color: #4caf50; color: #fff; }
+
+  #blackout {
+    position: absolute;
+    inset: 4px;
+    z-index: 16;
+    background: #000;
+    border-radius: 4px;
+    display: none;
+  }
 </style>
 </head>
 <body>
@@ -251,17 +260,24 @@
     <div id="dialogueChoices"></div>
   </div>
   <div id="instructions">Arrow keys move · Space attack · Left Shift dash · Right Shift (or M) menu · Enter talk · R restart</div>
+  <div id="blackout"></div>
 
   <div id="titleScreen" style="cursor:pointer;">
     <h1>Battle Cats: The Legend of Behemoth Island</h1>
-    <div class="prompt">Press any key (or click anywhere) to Start a New Game</div>
-    <div id="loadSlots"></div>
+    <div class="prompt" id="titlePrompt">Press any key (or click anywhere) to Start</div>
+  </div>
+
+  <div id="chooseFileScreen">
+    <h1 style="font-size:24px;">Choose a File</h1>
+    <div id="chooseFileSlots"></div>
   </div>
 
   <div id="cutsceneScreen" style="cursor:pointer;">
     <div class="cutscene-stage">
-      <div class="cutscene-actor"><img id="cutsceneCatImg" class="pixel-sprite" width="115" height="120"><span>Cat Researcher</span></div>
+      <div class="cutscene-actor"><img id="cutsceneCatImg" class="pixel-sprite" width="115" height="120"><span>Researcher Cat</span></div>
       <img id="cutsceneEggImg" class="pixel-sprite" width="100" height="120">
+      <img id="cutsceneBagImg" class="pixel-sprite" width="60" height="60" style="display:none;">
+      <div class="cutscene-actor" id="cutsceneEnemyActor" style="display:none;"><img id="cutsceneEnemyImg" class="pixel-sprite" width="90" height="105" style="filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85);"><span>Wild Doge</span></div>
     </div>
     <div class="cutscene-box">
       <div id="cutsceneLine"></div>
@@ -319,6 +335,26 @@ hunterSpriteImg.src = HUNTER_SPRITE_SRC;
 const behemothBaseSpriteImg = new Image();
 behemothBaseSpriteImg.src = BEHEMOTH_BASE_SPRITE_SRC;
 
+// Researcher Cat's bag, dropped in the forest during the Wild Doge retreat.
+const BAG_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAACnUlEQVR4AeycwU0DQQxFNxRARVTCmbI4UwkV0UAYR4o0BMmIL/0Ze/XQmmR31h7Pe7LEiaeDn1IEEFJKx3EgBCHFCBRrhwlBSDECxdphQhBSjECxdpgQhBQjUKwdz4QUO2SndhBSzBZCEFKMQLF2mBCEFCNQrB0mBCHFCBRrhwlBSDECxdrpNCHF0HnaQYiHq1wVITI6TyJCPFzlqgiR0XkSEeLhKldFiIzOk4gQD1e5KkJkdJ5EhHi4ylURIqPzJCLEw1WuihAZnScRIR6uctUuQq7jhH/FeKX/1UHI9f315ZgjsM/38X08uwsbX/teHYT8oPv28Xlcv44jPn8sjJtJzLjrebUTEtAvz8dtYnoiz7tOheSpy1YvMQ1zxM7zfXwPUfG8e3QQcmMcwLO4vXSCX22EBOuYhMeI52eKNkJCxOOEnEnE/SxthISMkDJHPLsf5CyfbYQE8BAwRzybI2SN+8uItlcXIb/+0gr4jzEstJYx+m/1f3sD9l8RZ2odXSakNeT/NI+Q/9Ba8O4GIQtO1XgLhBSThxCEFCNQrB0mBCHFCBRrhwlBSDECxdphQhBSjECxdk4zIcW4yu0gREbnSUSIh6tcFSEyOk8iQjxc5aoIkdF5EhHi4SpXRYiMzpOIEA9XuSpCZHSeRISkXNcvImQ983RHhKR41i8iZD3zdEeEpHjWLyJkPfN0R4SkeNYvImQ983RHhKR41i8iZD3zdEeEpHg8i1lVhGR0NqwhZAP0bEuEZHQ2rCFkA/RsS4RkdDasIWQD9GxLhGR0NqwhZAP0bMtvAAAA//9BaXYDAAAABklEQVQDABB+acnuk9NRAAAAAElFTkSuQmCC';
+const bagSpriteImg = new Image();
+bagSpriteImg.src = BAG_SPRITE_SRC;
+document.getElementById('cutsceneBagImg').src = BAG_SPRITE_SRC;
+document.getElementById('cutsceneEnemyImg').src = ENEMY_SPRITE_SRC;
+
+// Three more campsite residents: Engineer Cat, Chef Cat, and Medic Cat
+// (Medic Cat has no permanent overworld spot — he only appears briefly
+// during the heal-at-tent sequence, see startHealSequence()).
+const ENGINEER_CAT_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACUAAAAaCAYAAAAwspV7AAABTElEQVR4nM1XQRKDIAwExx/02mOf0bMnX9C3+QxPvqXHXvsGOjDgrJEoxmjdGQbDLGRNIKgxF4TdMdcprydaxAHf9X0/I7Rti2sifxOqUkHOhcA4TpBHHHeEf5iogOhIjcehJLwTD03TrE4YhkHip5jMpmoLyF7Tj5QQNrOeFUdq7/7wsDa4sRj5GL00XixKRdCSMC611RmCPKBEWIgSlhFZSSBvXTyew5owLlLqMLGwdq9naDGVk/4vojoQlHyVCCoWZSJvC58IGv2hkdsEWcUONr7fO8nmnpPNYHHz1dT39/4wt887GHh0bXTgnfqGNj4jN3P0VwWZjKDQSJ5HO40tpY9ycX7p7VDTCPk+gXnTESlKtKYlrvTenKQPBVH08+thFMZxpWCLZy4yZ30psKJ81LSEtcJPF92L7qAfCsTspCnz5cLMtNfmXx8/67vznuhQHYoAAAAASUVORK5CYII=';
+const CHEF_CAT_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAdCAYAAAAkXAW5AAABDElEQVR4nNVWAQ7DIAj0zP7/5VuW6mYVFC02HUmz0l3khAMN4QGGwf+ssCPfnQTJXwwAYeSvEolWIIuAkn/FzCRw7FT1b9EEyVPg2t+miZDE10t9oYWMdysHU2Br4WfxJhJT4rsqUrMwd5pUQ25a1wymR/93Bpc4YaM3gY8pIlX96E1AIaItTrMwoUxHr6lpIkElS17Zu6tF0fseZ1KLhJnBJpNS1nYH2wOpWTBjchl6+KJUdVvm52uvE12eg0gE6/cBAXHnQ01QyYjlUrNCQCQxIqIFWiXQlKM0i0Zq/KplEgAgTk3L4hKpmYuveoBBvk2rBIWuwV8d5VH6yLSjYqfoPBLexVj9euOfZ29I6rMR+OHcmwAAAABJRU5ErkJggg==';
+const MEDIC_CAT_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABsAAAAYCAYAAAALQIb7AAAA3ElEQVR4nL1VUQ6DIAxtyY7h/tz9T6ZX6AKzSVdLKYi+xIC0vIfPagEeBDoxUnFq7KcGH6SaEBFJgXKfr21Zy2jFwT5QU4wZJBHs78/fqOOjoIOBNLZlPa2ByPdILY+vHfMHjCxetiQDEU3BNFsoo1YsabaQJ+hWo7IlvF5DSKz21L1uJHgQqSeZbeu1b+idZdvynO3rFX1FkljEmnuHG7ZRE7eKg4w49n5n0kYr5gCnVyPZraiAxTD6siMO7KoVOVzjALFftiL+bd3VYiyY1nU1xIH8M4EaZ+ffjy+x6BLNmZTCIgAAAABJRU5ErkJggg==';
+const engineerCatSpriteImg = new Image();
+engineerCatSpriteImg.src = ENGINEER_CAT_SPRITE_SRC;
+const chefCatSpriteImg = new Image();
+chefCatSpriteImg.src = CHEF_CAT_SPRITE_SRC;
+const medicCatSpriteImg = new Image();
+medicCatSpriteImg.src = MEDIC_CAT_SPRITE_SRC;
+
 const playerHpFill = document.querySelector('#playerHp .bar-fill');
 const enemyHpEl = document.getElementById('enemyHp');
 const enemyHpFill = document.querySelector('#enemyHp .bar-fill');
@@ -328,9 +364,12 @@ const dashCdFill = document.getElementById('dashCd');
 const msgEl = document.getElementById('msg');
 const toastsEl = document.getElementById('toasts');
 const titleScreenEl = document.getElementById('titleScreen');
-const loadSlotsEl = document.getElementById('loadSlots');
+const chooseFileScreenEl = document.getElementById('chooseFileScreen');
+const chooseFileSlotsEl = document.getElementById('chooseFileSlots');
 const cutsceneScreenEl = document.getElementById('cutsceneScreen');
 const cutsceneLineEl = document.getElementById('cutsceneLine');
+const cutsceneBagImgEl = document.getElementById('cutsceneBagImg');
+const cutsceneEnemyActorEl = document.getElementById('cutsceneEnemyActor');
 const menuScreenEl = document.getElementById('menuScreen');
 const menuContentEl = document.getElementById('menuContent');
 const dialogueBoxEl = document.getElementById('dialogueBox');
@@ -339,6 +378,7 @@ const dialogueTextEl = document.getElementById('dialogueText');
 const dialoguePromptEl = document.getElementById('dialoguePrompt');
 const dialogueChoicesEl = document.getElementById('dialogueChoices');
 const testModeBtn = document.getElementById('testModeBtn');
+const blackoutEl = document.getElementById('blackout');
 
 // Raw "speed" stats are small design units, not pixels/sec on their own.
 // This converts them to a workable on-screen pace; tune freely.
@@ -373,7 +413,7 @@ const ZONES = {
       // small room around the player's entry point — guard enemy is enemySpawns[0]
       { x: 2026, y: 1760, w: 30, h: 480 },
       // tents (also solid obstacles), north of the campfire — any of them
-      // can be talked to (Enter) to reach Cat Medic inside
+      // can be talked to (Enter) to reach Medic Cat inside
       { x: 341, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
       { x: 821, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
       { x: 1301, y: 1160, w: 200, h: 140, visual: 'tent', interactable: 'medic' },
@@ -401,21 +441,35 @@ const ZONES = {
     ],
     npcs: [
       {
-        id: 'hunter', name: 'Cat Hunter', x: 840, y: 1400,
+        id: 'hunter', name: 'Hunter Cat', x: 840, y: 1400,
         sprite: hunterSpriteImg, spriteW: 70, spriteH: 50,
-        lines: () => [
-          { text: "Looking for the Biologist?" },
-          { text: "...........................................................", slow: true },
-          { text: "No Clue where he is." },
-        ],
+        lines: () => {
+          if (campEmergency === 'encounter') return [{ text: "HELP! IT'S TOO STRONG!" }];
+          if (campEmergency === 'fled') return [{ text: "We need to steer clear of that thing... it could still be out there." }];
+          return [
+            { text: "Looking for the Biologist?" },
+            { text: "...........................................................", slow: true },
+            { text: "No Clue where he is." },
+          ];
+        },
       },
       {
-        id: 'explorer', name: 'Cat Explorer', x: 1480, y: 1400,
+        id: 'explorer', name: 'Explorer Cat', x: 1480, y: 1400,
         sprite: explorerSpriteImg, spriteW: 46, spriteH: 48,
         lines: () => [{ text: "Nice Discovery! Our Biologist is somewhere around the campsite." }],
       },
       {
-        id: 'biologist', name: 'Cat Biologist', x: 200, y: 1000,
+        id: 'engineer', name: 'Engineer Cat', x: 1195, y: 1163, // right of the Behemoth Base
+        sprite: engineerCatSpriteImg, spriteW: 44, spriteH: 40,
+        lines: () => [{ text: "You can save progress at behemoth bases!" }],
+      },
+      {
+        id: 'chef', name: 'Chef Cat', x: 441, y: 1340, // in front of the leftmost tent
+        sprite: chefCatSpriteImg, spriteW: 40, spriteH: 42,
+        lines: () => [{ text: "If you're feeling tired, you can always see Medic Cat, he's always in the tents." }],
+      },
+      {
+        id: 'biologist', name: 'Biologist Cat', x: 200, y: 1000,
         sprite: biologistSpriteImg, spriteW: 46, spriteH: 48,
         lines: () => getEggStage() === 'ancient'
           ? [{ text: "Interesting egg. It seems that the egg needs to be upgraded with XP! Defeat more Doges to gain some!" }]
@@ -562,6 +616,27 @@ const ENEMY_DEF = {
 };
 const ENEMY_XP_DROP = 8000;
 
+// Doge and Researcher Cat (the player) attacks are a thick straight line
+// swung/thrust in the facing direction, not a circular splash.
+const PLAYER_ATK_THICKNESS = 40;
+const ENEMY_ATK_THICKNESS = 40;
+
+// The camp-emergency boss. Unlike normal Doges (traited, line-attack), Wild
+// Doge is traitless but a Behemoth-class enemy, and its attack is a true
+// area hit (a circle the size of its range) rather than a line.
+const WILD_DOGE_DEF = {
+  hpMax: 55000, atk: 16500, atkRange: 150,
+  atkFrequency: 1.57, speed: 25,
+  halfSize: 40,
+  areaAttack: true,
+  isBehemoth: true,
+  traits: [],
+  survive: true,       // 30% chance to revive at 1 HP instead of dying
+  surviveChance: 0.30,
+  surgeImmune: true,   // surge attacks don't exist yet, but Wild Doge is immune to them
+};
+const CAMP_ARRIVAL_RADIUS = 550;
+
 // Ancient Egg N101 level costs: index i = XP cost to go from level i to i+1.
 // Only indices 0-4 (levels 1-5) are used now — reaching level 5 evolves the
 // egg into Cinnabar Egg N101, after which progress is stone-gated (EVOLVE),
@@ -579,16 +654,26 @@ const CUTSCENE_LINES = [
   "Deep in a hidden chamber, something catches her eye...",
   "An egg unlike any she's seen before. Ancient. Warm. Alive.",
   '"This... this could change everything."',
-  "Cat Researcher decides to take the egg out into the field to study it firsthand.",
+  "Researcher Cat decides to take the egg out into the field to study it firsthand.",
 ];
 
-let screen = 'title'; // 'title' | 'cutscene' | 'game'
+const RETREAT_CUTSCENE_LINES = [
+  "The Wild Doge lunges with terrifying force, striking you down in a single blow.",
+  'Hunter Cat: "IT\'S TOO STRONG! RETREAT!"',
+  "Researcher Cat scoops up the egg and bolts for the tree line, the Wild Doge's roar echoing behind.",
+  "In the panic, Researcher Cat stumbles — the bag and the egg tumble from his grip and disappear into the forest undergrowth.",
+];
+
+let screen = 'title'; // 'title' | 'chooseFile' | 'cutscene' | 'game'
 let cutsceneIndex = 0;
+let cutsceneMode = 'intro'; // 'intro' | 'retreat'
+function getCutsceneLines() { return cutsceneMode === 'retreat' ? RETREAT_CUTSCENE_LINES : CUTSCENE_LINES; }
 
 let player = null, enemies = [], telegraphs = [], particles = [], loot = [], toasts = [], gameOver = false;
 let menuOpen = false, menuTab = 'map';
 let frozenMessage = null;
 let activeDialogue = null;
+let healCutscene = null; // { phase: 'appear'|'black'|'return', timer, x, y }
 
 // Persistent meta-progression: NOT reset by R or death, only by a full page reload.
 let metaXP = 0;
@@ -606,10 +691,20 @@ testModeBtn.addEventListener('click', () => {
 const inventory = { stones: { red: 0, purple: 0 } };
 let respawnPoint = { x: ZONES.start.playerStart.x, y: ZONES.start.playerStart.y };
 
-// Behemoth Base save points: 3 independent slots in localStorage. Saving
-// also moves the in-session respawn point to wherever the player saved.
+// Story/event state (see the camp-emergency sequence below). Persisted with
+// the save data so reloading doesn't undo story progress.
+let campEmergency = 'none'; // 'none' | 'alerted' | 'encounter' | 'fled'
+let campDestroyed = false;
+let bagDropped = false; // Researcher Cat's bag + egg, dropped in the forest during the retreat
+let wildDoge = null;
+
+// Behemoth Base save points: 3 independent slots in localStorage, one
+// "active" slot per session (chosen at the file-select screen, or implied by
+// auto-continuing the most recent save). Saving also moves the in-session
+// respawn point to wherever the player saved.
 const SAVE_SLOT_COUNT = 3;
 const SAVE_KEY_PREFIX = 'battleCatsBehemothIslandSave_slot';
+let activeSaveSlot = 1;
 
 function readSaveSlot(slot) {
   try {
@@ -620,11 +715,25 @@ function readSaveSlot(slot) {
 function writeSaveSlot(slot, data) {
   try { localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data)); } catch (e) { /* storage unavailable */ }
 }
+function deleteAllSaveSlots() {
+  for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
+    try { localStorage.removeItem(SAVE_KEY_PREFIX + slot); } catch (e) { /* storage unavailable */ }
+  }
+}
+function getMostRecentSave() {
+  let best = null;
+  for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
+    const data = readSaveSlot(slot);
+    if (data && (!best || (data.savedAt || 0) > (best.data.savedAt || 0))) best = { slot, data };
+  }
+  return best;
+}
 function currentSaveData() {
   return {
     metaXP, eggLevel, eggEvolved2,
     stonesRed: inventory.stones.red, stonesPurple: inventory.stones.purple,
     tutorialFlags: { ...tutorialFlags },
+    campEmergency, campDestroyed, bagDropped,
     respawnX: player.x, respawnY: player.y,
     savedAt: Date.now(),
   };
@@ -636,30 +745,66 @@ function applySaveData(data) {
   inventory.stones.red = data.stonesRed || 0;
   inventory.stones.purple = data.stonesPurple || 0;
   if (data.tutorialFlags) tutorialFlags = { ...tutorialFlags, ...data.tutorialFlags };
+  campEmergency = data.campEmergency || 'none';
+  campDestroyed = !!data.campDestroyed;
+  bagDropped = !!data.bagDropped;
   if (data.respawnX != null && data.respawnY != null) {
     respawnPoint = { x: data.respawnX, y: data.respawnY };
   }
 }
-function openSaveMenu() {
+function resetToNewGame() {
+  metaXP = 0; eggLevel = 0; eggEvolved2 = false;
+  inventory.stones.red = 0; inventory.stones.purple = 0;
+  campEmergency = 'none'; campDestroyed = false; bagDropped = false; wildDoge = null;
+  respawnPoint = { x: ZONES.start.playerStart.x, y: ZONES.start.playerStart.y };
+  resetCampNpcPositions();
+}
+function openSaveLoadMenu() {
+  activeDialogue = {
+    npc: { name: 'Behemoth Base' },
+    ...buildDialogueText([{ text: 'What would you like to do?' }]),
+    revealLength: 0, charTimer: 0, done: false,
+    choice: true, choicesRendered: false,
+    choices: [
+      {
+        label: 'SAVE',
+        onSelect: () => {
+          const data = currentSaveData();
+          writeSaveSlot(activeSaveSlot, data);
+          respawnPoint = { x: data.respawnX, y: data.respawnY };
+          addToast('Saved to Slot ' + activeSaveSlot + '!');
+        },
+      },
+      { label: 'LOAD', onSelect: () => openLoadMenu() },
+    ],
+  };
+}
+function openLoadMenu() {
   const choices = [];
   for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
     const existing = readSaveSlot(slot);
     const label = existing
       ? `Slot ${slot}: Lv ${existing.eggLevel} · ${(existing.metaXP || 0).toLocaleString()} XP`
-      : `Slot ${slot}: Empty`;
+      : `Slot ${slot}: Empty (start new game)`;
     choices.push({
       label,
       onSelect: () => {
-        const data = currentSaveData();
-        writeSaveSlot(slot, data);
-        respawnPoint = { x: data.respawnX, y: data.respawnY };
-        addToast('Saved to Slot ' + slot + '!');
+        activeSaveSlot = slot;
+        if (existing) {
+          applySaveData(existing);
+          startGameSession();
+          addToast('Loaded Slot ' + slot + '!');
+        } else {
+          resetToNewGame();
+          startGameSession();
+          addToast('Started a new game in Slot ' + slot + '!');
+        }
       },
     });
   }
   activeDialogue = {
     npc: { name: 'Behemoth Base' },
-    ...buildDialogueText([{ text: 'Choose a save slot:' }]),
+    ...buildDialogueText([{ text: 'Choose a file to load:' }]),
     revealLength: 0, charTimer: 0, done: false,
     choice: true, choicesRendered: false, choices,
   };
@@ -722,20 +867,133 @@ function getNearestInteractable() {
     const d = dist(player.x, player.y, cx, cy);
     if (d < bestDist) { bestDist = d; best = { type: w.interactable, target: w }; }
   }
+  if (bagDropped) {
+    const d = dist(player.x, player.y, BAG_PROP.x, BAG_PROP.y);
+    if (d < bestDist) { bestDist = d; best = { type: 'bag', target: BAG_PROP }; }
+  }
   return best;
+}
+
+// Original NPC spots, captured once so the camp-emergency regroup (and
+// starting a fresh game) can be undone.
+const ORIGINAL_NPC_POS = {};
+for (const npc of ZONES.start.npcs) ORIGINAL_NPC_POS[npc.id] = { x: npc.x, y: npc.y };
+function resetCampNpcPositions() {
+  for (const npc of ZONES.start.npcs) {
+    const pos = ORIGINAL_NPC_POS[npc.id];
+    if (pos) { npc.x = pos.x; npc.y = pos.y; }
+  }
+}
+// When the Wild Doge attacks, every NPC flees to where Biologist Cat normally stands.
+function applyCampEmergencyVisuals() {
+  const biologist = ORIGINAL_NPC_POS.biologist;
+  // Every NPC but Biologist Cat himself huddles around his usual spot.
+  const offsets = [
+    { x: -22, y: 26 }, { x: 22, y: 26 }, { x: -26, y: -6 }, { x: 26, y: -6 },
+  ];
+  let i = 0;
+  for (const npc of ZONES.start.npcs) {
+    if (npc.id === 'biologist') continue;
+    const off = offsets[i % offsets.length];
+    npc.x = biologist.x + off.x;
+    npc.y = biologist.y + off.y;
+    i++;
+  }
+}
+
+const WILD_DOGE_SPAWN = { x: 150, y: 900 }; // top-left corner of the campsite
+function spawnWildDoge() {
+  wildDoge = {
+    def: WILD_DOGE_DEF, x: WILD_DOGE_SPAWN.x, y: WILD_DOGE_SPAWN.y, r: WILD_DOGE_DEF.halfSize,
+    hp: WILD_DOGE_DEF.hpMax, state: 'idle', facingLeft: false, atkCdTimer: 0, hitFlash: 0,
+  };
+}
+
+function triggerEmergencyAlert() {
+  campEmergency = 'alerted';
+  const explorer = ZONES.start.npcs.find(n => n.id === 'explorer');
+  activeDialogue = {
+    npc: explorer,
+    ...buildDialogueText([{ text: 'EMERGENCY! HURRY BACK TO CAMP AS SOON AS POSSIBLE!' }]),
+    revealLength: 0, charTimer: 0, done: false,
+  };
+}
+
+function triggerCampEncounter() {
+  campEmergency = 'encounter';
+  campDestroyed = true;
+  applyCampEmergencyVisuals();
+  spawnWildDoge();
+  const hunter = ZONES.start.npcs.find(n => n.id === 'hunter');
+  activeDialogue = {
+    npc: hunter,
+    ...buildDialogueText([{ text: "HELP! IT'S TOO STRONG!" }]),
+    revealLength: 0, charTimer: 0, done: false,
+  };
+}
+
+// Researcher Cat's bag, dropped near the forest edge after the retreat.
+const BAG_PROP = { x: 90, y: 880 };
+function beginRetreatCutscene() {
+  screen = 'cutscene';
+  cutsceneMode = 'retreat';
+  cutsceneIndex = 0;
+}
+function finishRetreatCutscene() {
+  cutsceneMode = 'intro';
+  campEmergency = 'fled';
+  bagDropped = true;
+  wildDoge = null;
+  player.hp = PLAYER_STATS.hpMax;
+  player.x = respawnPoint.x;
+  player.y = respawnPoint.y;
+  screen = 'game';
+  updateCamera();
+  addToast("Researcher Cat lost the bag and the egg in the forest!");
+}
+
+// Medic Cat's heal-at-tent sequence: he steps out of the tent, the screen
+// cuts to black for 2 seconds while the player is healed, then it returns
+// and he steps back inside.
+const HEAL_APPEAR_TIME = 0.4, HEAL_BLACK_TIME = 2.0, HEAL_RETURN_TIME = 0.4;
+function startHealSequence(tentWall) {
+  healCutscene = {
+    phase: 'appear', timer: HEAL_APPEAR_TIME,
+    x: tentWall.x + tentWall.w / 2, y: tentWall.y + tentWall.h + 22,
+  };
+}
+function updateHealCutscene(dt) {
+  const hc = healCutscene;
+  hc.timer -= dt;
+  if (hc.timer > 0) return;
+  if (hc.phase === 'appear') {
+    hc.phase = 'black';
+    hc.timer = HEAL_BLACK_TIME;
+    player.hp = PLAYER_STATS.hpMax;
+    addToast('Healed to full HP!');
+  } else if (hc.phase === 'black') {
+    hc.phase = 'return';
+    hc.timer = HEAL_RETURN_TIME;
+  } else {
+    healCutscene = null;
+  }
 }
 
 const DIALOGUE_CHAR_INTERVAL = 0.08;
 function buildDialogueText(parts) {
-  let full = '', slowMask = [], smallMask = [];
+  let full = '', slowMask = [], smallMask = [], speedMask = [];
   for (const p of parts) {
     for (const ch of p.text) {
       full += ch;
-      slowMask.push(!!p.slow);
+      const isSlow = !!p.slow;
+      slowMask.push(isSlow);
       smallMask.push(!!p.small);
+      // Periods in a slow-paced line render at half speed (double interval)
+      // compared to the rest of that line's characters.
+      speedMask.push(isSlow && ch === '.' ? 2 : 1);
     }
   }
-  return { full, slowMask, smallMask };
+  return { full, slowMask, smallMask, speedMask };
 }
 function updateDialogue(dt) {
   const d = activeDialogue;
@@ -743,8 +1001,9 @@ function updateDialogue(dt) {
   if (d.revealLength >= d.full.length) { d.done = true; return; }
   if (d.slowMask[d.revealLength]) {
     d.charTimer += dt;
-    if (d.charTimer >= DIALOGUE_CHAR_INTERVAL) {
-      d.charTimer -= DIALOGUE_CHAR_INTERVAL;
+    const interval = DIALOGUE_CHAR_INTERVAL * (d.speedMask ? d.speedMask[d.revealLength] : 1);
+    if (d.charTimer >= interval) {
+      d.charTimer -= interval;
       d.revealLength++;
     }
   } else {
@@ -786,6 +1045,17 @@ function startGameSession() {
   } else {
     frozenMessage = null;
   }
+
+  // Re-derive the camp-emergency world state from story flags every time a
+  // session starts (fresh game, R restart, or loading a save).
+  resetCampNpcPositions();
+  wildDoge = null;
+  if (campEmergency === 'encounter' || campEmergency === 'fled') {
+    applyCampEmergencyVisuals();
+  }
+  if (campEmergency === 'encounter') {
+    spawnWildDoge();
+  }
 }
 
 function spawnHit(x, y, color) {
@@ -795,8 +1065,29 @@ function spawnHit(x, y, color) {
     particles.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 0.35, maxLife: 0.35, color });
   }
 }
+// Circular area-of-effect telegraph (only Wild Doge uses this — normal
+// Doges and Researcher Cat use the thick-line telegraph below).
 function spawnTelegraph(cx, cy, radius, windup, damage, target, ownerX, ownerY) {
-  telegraphs.push({ x: cx, y: cy, r: radius, timer: windup, resolved: false, impactFlash: 0, damage, target, ownerX, ownerY });
+  telegraphs.push({ shape: 'circle', x: cx, y: cy, r: radius, timer: windup, resolved: false, impactFlash: 0, damage, target, ownerX, ownerY });
+}
+// Thick straight-line telegraph, swung from (ox, oy) in direction `angle`
+// for `length` units, `thickness` units wide.
+function spawnLineTelegraph(ox, oy, angle, length, thickness, windup, damage, target) {
+  telegraphs.push({ shape: 'line', ox, oy, angle, length, thickness, timer: windup, resolved: false, impactFlash: 0, damage, target, ownerX: ox, ownerY: oy });
+}
+function distPointToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  let t = lenSq > 0 ? ((px - x1) * dx + (py - y1) * dy) / lenSq : 0;
+  t = clamp(t, 0, 1);
+  return dist(px, py, x1 + t * dx, y1 + t * dy);
+}
+function telegraphHits(t, tx, ty, tr) {
+  if (t.shape === 'line') {
+    const x2 = t.ox + Math.cos(t.angle) * t.length, y2 = t.oy + Math.sin(t.angle) * t.length;
+    return distPointToSegment(tx, ty, t.ox, t.oy, x2, y2) < t.thickness / 2 + tr;
+  }
+  return dist(t.x, t.y, tx, ty) < t.r + tr;
 }
 function addToast(text) { toasts.push({ text, life: 2.5 }); }
 
@@ -841,9 +1132,7 @@ function updatePlayer(dt) {
 
   if (justPressed('Space') && player.atkCdTimer <= 0) {
     player.atkCdTimer = PLAYER_STATS.atkCooldown;
-    const fx = Math.cos(player.facing), fy = Math.sin(player.facing);
-    const r = PLAYER_STATS.atkRange / 2;
-    spawnTelegraph(player.x + fx * r, player.y + fy * r, r, ATK_WINDUP, PLAYER_STATS.atk, 'enemies', player.x, player.y);
+    spawnLineTelegraph(player.x, player.y, player.facing, PLAYER_STATS.atkRange, PLAYER_ATK_THICKNESS, ATK_WINDUP, PLAYER_STATS.atk, 'enemies');
   }
 }
 
@@ -887,8 +1176,30 @@ function updateEnemy(e, dt) {
   } else if (e.atkCdTimer <= 0) {
     e.atkCdTimer = e.def.atkFrequency;
     const a = Math.atan2(player.y - e.y, player.x - e.x);
-    const r = e.def.atkRange / 2;
-    spawnTelegraph(e.x + Math.cos(a) * r, e.y + Math.sin(a) * r, r, ATK_WINDUP, e.def.atk, 'player', e.x, e.y);
+    spawnLineTelegraph(e.x, e.y, a, e.def.atkRange, ENEMY_ATK_THICKNESS, ATK_WINDUP, e.def.atk, 'player');
+  }
+}
+
+// Wild Doge: a unique camp-emergency boss, tracked separately from the
+// regular `enemies` array. True area attack (a circle the size of its
+// range), unlike the line attack every normal Doge uses.
+function updateWildDoge(dt) {
+  const wd = wildDoge;
+  if (!wd || wd.hp <= 0) return;
+  if (wd.hitFlash > 0) wd.hitFlash -= dt;
+  if (wd.atkCdTimer > 0) wd.atkCdTimer -= dt;
+  wd.facingLeft = player.x < wd.x;
+  wd.state = 'chase';
+
+  const d = dist(wd.x, wd.y, player.x, player.y);
+  if (d > wd.def.atkRange * 0.9) {
+    const a = Math.atan2(player.y - wd.y, player.x - wd.x);
+    wd.x += Math.cos(a) * wd.def.speed * SPEED_SCALE * dt;
+    wd.y += Math.sin(a) * wd.def.speed * SPEED_SCALE * dt;
+    resolveObstacles(wd);
+  } else if (wd.atkCdTimer <= 0) {
+    wd.atkCdTimer = wd.def.atkFrequency;
+    spawnTelegraph(wd.x, wd.y, wd.def.atkRange, ATK_WINDUP, wd.def.atk, 'player', wd.x, wd.y);
   }
 }
 
@@ -901,7 +1212,7 @@ function updateTelegraphs(dt) {
         t.resolved = true;
         t.impactFlash = 0.15;
         if (t.target === 'player') {
-          if (player.hp > 0 && dist(t.x, t.y, player.x, player.y) < t.r + player.r &&
+          if (player.hp > 0 && telegraphHits(t, player.x, player.y, player.r) &&
               hasLineOfSight(t.ownerX, t.ownerY, player.x, player.y)) {
             if (!infiniteHealth) player.hp -= t.damage;
             player.hitFlash = 0.2;
@@ -910,11 +1221,27 @@ function updateTelegraphs(dt) {
         } else {
           for (const en of enemies) {
             if (en.hp <= 0) continue;
-            if (dist(t.x, t.y, en.x, en.y) < t.r + en.r &&
+            if (telegraphHits(t, en.x, en.y, en.r) &&
                 hasLineOfSight(t.ownerX, t.ownerY, en.x, en.y)) {
               en.hp -= t.damage;
               en.hitFlash = 0.2;
               spawnHit(en.x, en.y, '#ffd35c');
+            }
+          }
+          if (wildDoge && wildDoge.hp > 0 &&
+              telegraphHits(t, wildDoge.x, wildDoge.y, wildDoge.r) &&
+              hasLineOfSight(t.ownerX, t.ownerY, wildDoge.x, wildDoge.y)) {
+            wildDoge.hp -= t.damage;
+            wildDoge.hitFlash = 0.2;
+            spawnHit(wildDoge.x, wildDoge.y, '#ffd35c');
+            if (wildDoge.hp <= 0) {
+              if (wildDoge.def.survive && Math.random() < wildDoge.def.surviveChance) {
+                wildDoge.hp = 1;
+                addToast('Wild Doge survives!');
+              } else {
+                wildDoge.hp = 0;
+                addToast('Wild Doge defeated!');
+              }
             }
           }
         }
@@ -949,15 +1276,38 @@ function updateToasts(dt) {
   }
 }
 
+// Secret combo: hold Shift + Z + Enter/Return together to wipe the active
+// save file's data (e.g. to reset progress for testing).
+let prevDeleteComboDown = false;
+function isDeleteComboDown() {
+  return (keys['ShiftLeft'] || keys['ShiftRight']) && keys['KeyZ'] && (keys['Enter'] || keys['NumpadEnter']);
+}
+function checkDeleteCombo() {
+  const down = isDeleteComboDown();
+  if (down && !prevDeleteComboDown) {
+    try { localStorage.removeItem(SAVE_KEY_PREFIX + activeSaveSlot); } catch (e) { /* storage unavailable */ }
+    addToast('Deleted save data for Slot ' + activeSaveSlot + '!');
+  }
+  prevDeleteComboDown = down;
+}
+
 function doUpdate(dt) {
+  checkDeleteCombo();
+
   if (screen === 'title') {
-    if (justPressedEnter()) { screen = 'cutscene'; cutsceneIndex = 0; }
+    if (justPressedEnter()) handleTitleStart();
     return;
+  }
+  if (screen === 'chooseFile') {
+    return; // waiting on a file-slot button click
   }
   if (screen === 'cutscene') {
     if (justPressedEnter()) {
       cutsceneIndex++;
-      if (cutsceneIndex >= CUTSCENE_LINES.length) startGameSession();
+      if (cutsceneIndex >= getCutsceneLines().length) {
+        if (cutsceneMode === 'retreat') finishRetreatCutscene();
+        else startGameSession();
+      }
     }
     return;
   }
@@ -965,6 +1315,11 @@ function doUpdate(dt) {
   // screen === 'game'
   if (gameOver) {
     if (anyKeyJustPressed) startGameSession();
+    return;
+  }
+
+  if (healCutscene) {
+    updateHealCutscene(dt);
     return;
   }
 
@@ -1002,17 +1357,24 @@ function doUpdate(dt) {
         const parts = near.target.lines();
         activeDialogue = { npc: near.target, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false };
       } else if (near.type === 'medic') {
+        const tentWall = near.target;
         const parts = [{ text: "Are you tired? If so then you can heal up." }];
         activeDialogue = {
-          npc: { name: 'Cat Medic' }, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false,
+          npc: { name: 'Medic Cat' }, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false,
           choice: true, choicesRendered: false,
           choices: [
-            { label: 'YES', onSelect: () => { player.hp = PLAYER_STATS.hpMax; addToast('Healed to full HP!'); } },
+            { label: 'YES', onSelect: () => startHealSequence(tentWall) },
             { label: 'NO', onSelect: () => {} },
           ],
         };
       } else if (near.type === 'save') {
-        openSaveMenu();
+        openSaveLoadMenu();
+      } else if (near.type === 'bag') {
+        activeDialogue = {
+          npc: { name: 'Researcher Cat\'s Bag' },
+          ...buildDialogueText([{ text: "It's torn and empty... the egg is nowhere to be found." }]),
+          revealLength: 0, charTimer: 0, done: false,
+        };
       }
       return;
     }
@@ -1022,9 +1384,17 @@ function doUpdate(dt) {
   updateCamera();
   checkExits();
   for (const e of enemies) updateEnemy(e, dt);
+  updateWildDoge(dt);
   updateTelegraphs(dt);
   updateLoot();
   updateToasts(dt);
+
+  if (campEmergency === 'none' && inventory.stones.red >= EVOLVE_STONE_COST && inventory.stones.purple >= EVOLVE_STONE_COST) {
+    triggerEmergencyAlert();
+  }
+  if (campEmergency === 'alerted' && dist(player.x, player.y, ZONES.start.campfire.x, ZONES.start.campfire.y) < CAMP_ARRIVAL_RADIUS) {
+    triggerCampEncounter();
+  }
 
   for (const e of enemies) {
     if (e.hp <= 0 && !e.lootDropped) {
@@ -1048,7 +1418,11 @@ function doUpdate(dt) {
     }
   }
 
-  if (player.hp <= 0) { player.hp = 0; endGame(); }
+  if (player.hp <= 0) {
+    player.hp = 0;
+    if (campEmergency === 'encounter') beginRetreatCutscene();
+    else endGame();
+  }
 
   for (let i = particles.length - 1; i >= 0; i--) {
     const pt = particles[i];
@@ -1097,6 +1471,7 @@ function renderMenuContent() {
         <button id="upgradeBtn" class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Upgrade</button>`;
     } else if (stage === 'cinnabar') {
       const canEvolve = inventory.stones.red >= EVOLVE_STONE_COST && inventory.stones.purple >= EVOLVE_STONE_COST;
+      const emergencyBlocked = campEmergency === 'alerted' || campEmergency === 'encounter';
       html = `
         <h2 style="display:flex; align-items:center; gap:12px;">
           <img src="${CINNABAR_EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="46">
@@ -1105,6 +1480,7 @@ function renderMenuContent() {
         <p>XP: ${metaXP.toLocaleString()}</p>
         <p>Requires Red Behemoth Stone x${EVOLVE_STONE_COST} and Purple Behemoth Stone x${EVOLVE_STONE_COST}</p>
         <p style="opacity:.7">You have: ${inventory.stones.red} red, ${inventory.stones.purple} purple</p>
+        ${emergencyBlocked ? '<p style="color:#ff6b6b">There is an Emergency at camp! No time!</p>' : ''}
         <button id="upgradeBtn" class="upgrade-btn" ${canEvolve ? '' : 'disabled'}>EVOLVE</button>`;
     } else {
       html = `
@@ -1136,6 +1512,8 @@ function renderMenuContent() {
         eggLevel++;
         if (eggLevel >= EVOLVE_LEVEL) addToast('Your egg evolved into Cinnabar Egg N101!');
         renderMenuContent();
+      } else if (stage === 'cinnabar' && (campEmergency === 'alerted' || campEmergency === 'encounter')) {
+        addToast('There is an Emergency at camp! No time!');
       } else if (stage === 'cinnabar' && inventory.stones.red >= EVOLVE_STONE_COST && inventory.stones.purple >= EVOLVE_STONE_COST) {
         inventory.stones.red -= EVOLVE_STONE_COST;
         inventory.stones.purple -= EVOLVE_STONE_COST;
@@ -1150,35 +1528,56 @@ document.querySelectorAll('.menu-tabs button').forEach(btn => {
   btn.addEventListener('click', () => { menuTab = btn.dataset.tab; renderMenuContent(); });
 });
 
-function renderTitleLoadSlots() {
+// Starting from the title screen: if any save file has data, jump straight
+// into the game at the most recent save's Behemoth Base (no cutscene replay,
+// no per-slot "Continue" buttons). Otherwise — a completely fresh install —
+// send the player to the file-select screen before the intro cutscene.
+function handleTitleStart() {
+  if (screen !== 'title') return;
+  const recent = getMostRecentSave();
+  if (recent) {
+    activeSaveSlot = recent.slot;
+    applySaveData(recent.data);
+    startGameSession();
+  } else {
+    renderChooseFileSlots();
+    screen = 'chooseFile';
+  }
+}
+function renderChooseFileSlots() {
   let html = '';
   for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
     const data = readSaveSlot(slot);
-    if (data) {
-      html += `<button data-load-slot="${slot}">Continue Slot ${slot} — Lv ${data.eggLevel} · ${(data.metaXP || 0).toLocaleString()} XP</button>`;
-    }
+    const label = data
+      ? `File ${slot}: Lv ${data.eggLevel} · ${(data.metaXP || 0).toLocaleString()} XP`
+      : `File ${slot}: Empty (start new game)`;
+    html += `<button data-file-slot="${slot}">${label}</button>`;
   }
-  loadSlotsEl.innerHTML = html;
-  loadSlotsEl.querySelectorAll('[data-load-slot]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation(); // don't also trigger titleScreenEl's "start new game" click
-      const data = readSaveSlot(parseInt(btn.dataset.loadSlot, 10));
-      applySaveData(data);
-      startGameSession();
+  chooseFileSlotsEl.innerHTML = html;
+  chooseFileSlotsEl.querySelectorAll('[data-file-slot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const slot = parseInt(btn.dataset.fileSlot, 10);
+      const data = readSaveSlot(slot);
+      activeSaveSlot = slot;
+      if (data) applySaveData(data);
+      else resetToNewGame();
+      screen = 'cutscene';
+      cutsceneMode = 'intro';
+      cutsceneIndex = 0;
     });
   });
 }
-renderTitleLoadSlots();
 
 // Click-to-continue fallback in case a keyboard reports the Return/Enter
 // key in a way justPressedEnter() doesn't recognize.
-titleScreenEl.addEventListener('click', () => {
-  if (screen === 'title') { screen = 'cutscene'; cutsceneIndex = 0; }
-});
+titleScreenEl.addEventListener('click', () => handleTitleStart());
 cutsceneScreenEl.addEventListener('click', () => {
   if (screen === 'cutscene') {
     cutsceneIndex++;
-    if (cutsceneIndex >= CUTSCENE_LINES.length) startGameSession();
+    if (cutsceneIndex >= getCutsceneLines().length) {
+      if (cutsceneMode === 'retreat') finishRetreatCutscene();
+      else startGameSession();
+    }
   }
 });
 msgEl.addEventListener('click', () => {
@@ -1200,9 +1599,18 @@ let menuWasOpen = false;
 let renderedFrozenMessage = null;
 
 function syncOverlays() {
+  blackoutEl.style.display = (screen === 'game' && healCutscene && healCutscene.phase === 'black') ? 'block' : 'none';
+
   titleScreenEl.style.display = screen === 'title' ? 'flex' : 'none';
+  chooseFileScreenEl.style.display = screen === 'chooseFile' ? 'flex' : 'none';
   cutsceneScreenEl.style.display = screen === 'cutscene' ? 'flex' : 'none';
-  if (screen === 'cutscene') cutsceneLineEl.textContent = CUTSCENE_LINES[cutsceneIndex];
+  if (screen === 'cutscene') {
+    const lines = getCutsceneLines();
+    cutsceneLineEl.textContent = lines[cutsceneIndex];
+    const isRetreat = cutsceneMode === 'retreat';
+    cutsceneEnemyActorEl.style.display = (isRetreat && cutsceneIndex === 0) ? 'flex' : 'none';
+    cutsceneBagImgEl.style.display = (isRetreat && cutsceneIndex === lines.length - 1) ? 'inline-block' : 'none';
+  }
 
   const showMenu = screen === 'game' && menuOpen;
   menuScreenEl.style.display = showMenu ? 'flex' : 'none';
@@ -1245,8 +1653,11 @@ function syncOverlays() {
         .join('');
       activeDialogue.choices.forEach((c, i) => {
         dialogueChoicesEl.querySelector(`[data-choice-idx="${i}"]`).onclick = () => {
+          const before = activeDialogue;
           c.onSelect();
-          activeDialogue = null;
+          // Some choices (e.g. LOAD) open a new dialogue of their own from
+          // inside onSelect — only auto-close if nothing else took over.
+          if (activeDialogue === before) activeDialogue = null;
         };
       });
     }
@@ -1291,6 +1702,35 @@ function drawEnemy(e) {
   }
 }
 
+const WILD_DOGE_SPRITE_SCALE = ENEMY_SPRITE_SCALE * 2.4;
+const WILD_DOGE_SPRITE_W = 17 * WILD_DOGE_SPRITE_SCALE, WILD_DOGE_SPRITE_H = 21 * WILD_DOGE_SPRITE_SCALE;
+function drawWildDoge(wd) {
+  if (wd.hp <= 0) return;
+  ctx.save();
+  ctx.translate(wd.x, wd.y);
+  if (!wd.facingLeft) ctx.scale(-1, 1);
+  ctx.drawImage(enemySpriteImg, -WILD_DOGE_SPRITE_W / 2, -WILD_DOGE_SPRITE_H / 2, WILD_DOGE_SPRITE_W, WILD_DOGE_SPRITE_H);
+  // Permanent menacing red tint so the boss reads as distinct from normal Doges.
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.fillStyle = wd.hitFlash > 0 ? 'rgba(255,255,255,0.75)' : 'rgba(200,20,20,0.35)';
+  ctx.fillRect(-WILD_DOGE_SPRITE_W / 2, -WILD_DOGE_SPRITE_H / 2, WILD_DOGE_SPRITE_W, WILD_DOGE_SPRITE_H);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+
+  const barW = 90, barH = 8;
+  const pct = Math.max(0, wd.hp) / wd.def.hpMax;
+  const bx = wd.x - barW / 2, by = wd.y - WILD_DOGE_SPRITE_H / 2 - 26;
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Wild Doge', wd.x, by - 6);
+  ctx.fillStyle = '#000a';
+  ctx.fillRect(bx, by, barW, barH);
+  ctx.fillStyle = '#ff2020';
+  ctx.fillRect(bx, by, barW * pct, barH);
+  ctx.textAlign = 'left';
+}
+
 function drawWall(w) {
   if (w.visual === 'void') {
     ctx.fillStyle = '#10140d';
@@ -1298,7 +1738,7 @@ function drawWall(w) {
   } else if (w.visual === 'behemothBase') {
     ctx.drawImage(behemothBaseSpriteImg, w.x, w.y, w.w, w.h);
   } else if (w.visual === 'tent') {
-    ctx.fillStyle = '#d8d4c8';
+    ctx.fillStyle = campDestroyed ? '#8a8478' : '#d8d4c8';
     ctx.beginPath();
     ctx.moveTo(w.x, w.y + w.h);
     ctx.lineTo(w.x + w.w / 2, w.y);
@@ -1308,6 +1748,20 @@ function drawWall(w) {
     ctx.strokeStyle = '#33302a';
     ctx.lineWidth = 2;
     ctx.stroke();
+    if (campDestroyed) {
+      // Rips: a couple of jagged dark tears across the canvas.
+      ctx.strokeStyle = '#1a1712';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w.x + w.w * 0.35, w.y + w.h * 0.3);
+      ctx.lineTo(w.x + w.w * 0.5, w.y + w.h * 0.55);
+      ctx.lineTo(w.x + w.w * 0.4, w.y + w.h * 0.75);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(w.x + w.w * 0.6, w.y + w.h * 0.45);
+      ctx.lineTo(w.x + w.w * 0.7, w.y + w.h * 0.68);
+      ctx.stroke();
+    }
   } else {
     ctx.fillStyle = '#4a4f42';
     ctx.fillRect(w.x, w.y, w.w, w.h);
@@ -1318,6 +1772,27 @@ function drawWall(w) {
 }
 
 function drawCampfire(c) {
+  if (campDestroyed) {
+    // Blown-out logs — no flame — with a few wisps of smoke drifting up.
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 48, 0, Math.PI * 2);
+    ctx.fillStyle = '#2a2620';
+    ctx.fill();
+    ctx.strokeStyle = '#141210';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    const t = performance.now() / 500;
+    for (let i = 0; i < 3; i++) {
+      const rise = ((t + i * 1.7) % 3) / 3; // 0 (fresh) .. 1 (dissipated)
+      const sx = c.x + Math.sin(t + i * 2) * 10;
+      const sy = c.y - 70 - rise * 90;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 14 + rise * 22, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(120,120,120,${(1 - rise) * 0.35})`;
+      ctx.fill();
+    }
+    return;
+  }
   // 4x the original size
   ctx.beginPath();
   ctx.arc(c.x, c.y, 48, 0, Math.PI * 2);
@@ -1337,6 +1812,30 @@ function drawCampfire(c) {
   ctx.closePath();
   ctx.fillStyle = '#ffe27a';
   ctx.fill();
+}
+
+function drawBagProp() {
+  if (!bagDropped) return;
+  ctx.drawImage(bagSpriteImg, BAG_PROP.x - 15, BAG_PROP.y - 15, 30, 30);
+  if (!activeDialogue && dist(player.x, player.y, BAG_PROP.x, BAG_PROP.y) < INTERACT_RANGE) {
+    ctx.fillStyle = '#ffe27a';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Press Enter', BAG_PROP.x, BAG_PROP.y - 22);
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawHealCutsceneMedic() {
+  const hc = healCutscene;
+  if (!hc || hc.phase === 'black') return;
+  const w = 36, h = 36;
+  ctx.drawImage(medicCatSpriteImg, hc.x - w / 2, hc.y - h / 2, w, h);
+  ctx.fillStyle = '#fff';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Medic Cat', hc.x, hc.y - h / 2 - 8);
+  ctx.textAlign = 'left';
 }
 
 function drawNpc(npc) {
@@ -1407,6 +1906,8 @@ function draw() {
   }
   if (ZONES[currentZoneId].campfire) drawCampfire(ZONES[currentZoneId].campfire);
   for (const npc of (ZONES[currentZoneId].npcs || [])) drawNpc(npc);
+  drawBagProp();
+  drawHealCutsceneMedic();
 
   for (const it of loot) {
     ctx.beginPath();
@@ -1425,21 +1926,39 @@ function draw() {
   }
 
   for (const t of telegraphs) {
-    ctx.beginPath();
-    ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
-    if (!t.resolved) {
-      ctx.fillStyle = 'rgba(255,40,40,0.28)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,40,40,0.6)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+    if (t.shape === 'line') {
+      ctx.save();
+      ctx.translate(t.ox, t.oy);
+      ctx.rotate(t.angle);
+      if (!t.resolved) {
+        ctx.fillStyle = 'rgba(255,40,40,0.28)';
+        ctx.fillRect(0, -t.thickness / 2, t.length, t.thickness);
+        ctx.strokeStyle = 'rgba(255,40,40,0.6)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, -t.thickness / 2, t.length, t.thickness);
+      } else {
+        ctx.fillStyle = `rgba(255,120,40,${clamp(t.impactFlash / 0.15, 0, 1) * 0.5})`;
+        ctx.fillRect(0, -t.thickness / 2, t.length, t.thickness);
+      }
+      ctx.restore();
     } else {
-      ctx.fillStyle = `rgba(255,120,40,${clamp(t.impactFlash / 0.15, 0, 1) * 0.5})`;
-      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+      if (!t.resolved) {
+        ctx.fillStyle = 'rgba(255,40,40,0.28)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,40,40,0.6)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = `rgba(255,120,40,${clamp(t.impactFlash / 0.15, 0, 1) * 0.5})`;
+        ctx.fill();
+      }
     }
   }
 
   for (const e of enemies) if (e.hp > 0) drawEnemy(e);
+  if (wildDoge && wildDoge.hp > 0) drawWildDoge(wildDoge);
 
   const spriteScale = 2;
   const spriteW = 23 * spriteScale, spriteH = 24 * spriteScale;
@@ -1475,8 +1994,15 @@ function draw() {
   ctx.restore();
 
   playerHpFill.style.width = (Math.max(0, player.hp) / PLAYER_STATS.hpMax * 100) + '%';
-  enemyHpEl.style.display = enemies.length === 1 ? '' : 'none';
-  if (enemies.length === 1) enemyHpFill.style.width = (Math.max(0, enemies[0].hp) / ENEMY_DEF.hpMax * 100) + '%';
+  if (wildDoge && wildDoge.hp > 0) {
+    enemyHpEl.style.display = '';
+    enemyHpEl.childNodes[0].textContent = 'Wild Doge HP';
+    enemyHpFill.style.width = (Math.max(0, wildDoge.hp) / WILD_DOGE_DEF.hpMax * 100) + '%';
+  } else {
+    enemyHpEl.style.display = enemies.length === 1 ? '' : 'none';
+    enemyHpEl.childNodes[0].textContent = 'Enemy HP';
+    if (enemies.length === 1) enemyHpFill.style.width = (Math.max(0, enemies[0].hp) / ENEMY_DEF.hpMax * 100) + '%';
+  }
   levelXpEl.textContent = 'Lv. ' + eggLevel + '   XP: ' + metaXP.toLocaleString();
   atkCdFill.style.width = (100 - clamp(player.atkCdTimer / PLAYER_STATS.atkCooldown, 0, 1) * 100) + '%';
   dashCdFill.style.width = (100 - clamp(player.dashCdTimer / PLAYER_STATS.dashCooldown, 0, 1) * 100) + '%';
