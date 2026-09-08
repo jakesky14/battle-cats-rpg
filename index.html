@@ -28,12 +28,13 @@
     left: 10px;
     right: 10px;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     align-items: start;
     pointer-events: none;
     font-size: 13px;
   }
-  #levelXp { text-align: center; font-size: 14px; padding-top: 4px; }
+  #topRight { text-align: right; }
+  #levelXp { text-align: right; font-size: 14px; color: #4aa3ff; font-weight: bold; margin-top: 28px; margin-bottom: 6px; }
   #enemyHp { text-align: right; }
   .bar-bg {
     width: 220px;
@@ -86,15 +87,6 @@
   #msg.msg-tutorial, #msg.msg-clickable { pointer-events: auto; cursor: pointer; }
   #msg.msg-tutorial { font-size: 22px; }
   .msg-sub { font-size: 15px; font-weight: normal; margin-top: 10px; opacity: 0.85; }
-  #instructions {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    text-align: right;
-    font-size: 11px;
-    opacity: 0.75;
-    pointer-events: none;
-  }
   #toasts {
     position: absolute;
     top: 54px;
@@ -244,8 +236,10 @@
 
   <div id="hud">
     <div id="playerHp">Player HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
-    <div id="levelXp">Lv. 0&nbsp;&nbsp;&nbsp;XP: 0</div>
-    <div id="enemyHp">Enemy HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
+    <div id="topRight">
+      <div id="levelXp">XP: 0</div>
+      <div id="enemyHp">Enemy HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
+    </div>
   </div>
   <div id="cooldowns">
     <div class="cd-box">Attack<div class="cd-bg"><div id="atkCd" class="cd-fill"></div></div></div>
@@ -259,7 +253,6 @@
     <div id="dialoguePrompt" class="prompt">Press Enter (or click) to continue ▸</div>
     <div id="dialogueChoices"></div>
   </div>
-  <div id="instructions">Arrow keys move · Space attack · Left Shift dash · Right Shift (or M) menu · Enter talk · R restart</div>
   <div id="blackout"></div>
 
   <div id="titleScreen" style="cursor:pointer;">
@@ -277,7 +270,7 @@
       <div class="cutscene-actor"><img id="cutsceneCatImg" class="pixel-sprite" width="115" height="120"><span>Researcher Cat</span></div>
       <img id="cutsceneEggImg" class="pixel-sprite" width="100" height="120">
       <img id="cutsceneBagImg" class="pixel-sprite" width="60" height="60" style="display:none;">
-      <div class="cutscene-actor" id="cutsceneEnemyActor" style="display:none;"><img id="cutsceneEnemyImg" class="pixel-sprite" width="90" height="105" style="filter: sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.85);"><span>Wild Doge</span></div>
+      <div class="cutscene-actor" id="cutsceneEnemyActor" style="display:none;"><img id="cutsceneEnemyImg" class="pixel-sprite" width="90" height="105"><span>Wild Doge</span></div>
     </div>
     <div class="cutscene-box">
       <div id="cutsceneLine"></div>
@@ -307,9 +300,12 @@ const W = canvas.width, H = canvas.height;
 const CAT_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABcAAAAYCAYAAAARfGZ1AAAA+0lEQVR4nLVUQRKDMAgsmb7NU57Lyc/RwQa7UkhitTvjiLhsABF6zEECH42CqCNGZjPzF6HWivHI31EiYZEtUcmEFc0vjj8U39AChujxfCkH5rIsQ/F1XVNNFE9bcAb4LbqZ/4g489k+90D0SbrcKazAyaE7hX0FZYZ0xo8YiktS1Uy1Q/ErmBan1oaZduwx0WwLlKxi9pzZ2aFPM/DvpEbUYL3wGW3kYnz7S988Zt62G2xCMZ/BbO9DLsbrPcy8wsnYKt8K5EZ7aRdHcCP6Q6Lx6y07nRaKMj0DjUcN24w2ipcP4GO1/1+5xb+xvkJ/lZxdEb8LY81WkfJfyym5b8enBc8AAAAASUVORK5CYII=';
 const EGG_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAYCAYAAAD6S912AAABG0lEQVR4nGNkwA/+4xBnZCBVgoGB4b/SRh+Gwz/1MCSkw9pw6mXCZdiKZ7IMVSs/YEhs33CI4emqKrAaYg38D3JZ1Wl9MMeW/RKKYZ4BdmA2LkMZ0Q2DKgQbBPIuyBAYgBmGz/uM2AwjFUgjGYorDMkGTJS6Dj08qe5CRkpdhx6WVHchCzUMsUVKq2Avz4mywZrGCAHkNMrT85AhQuoxxMsgw5AliTUMpK8tXABs2JcSebA4PAxJMRRmGMyrVaf1wYaiGEisocj5GQQO/9QDY9sjsZgGEjIUZhhMHlvRxoJNIy5DYS6DyWOLSBZ0AVgpQyjWccmzIBtEDcCIUkKf1scaLqQUYUwwg0GJklyAXB5ilNhkmomvsqMMAAAuznzm4bu9lwAAAABJRU5ErkJggg==';
 // The two enemy frames in the source sheet are an exact horizontal mirror of
-// each other, so only one (17x21) is embedded; the other facing is drawn via
+// each other, so only one (18x21) is embedded; the other facing is drawn via
 // a canvas flip, same as the player sprite.
-const ENEMY_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAVCAYAAACg/AXsAAAAqElEQVR4nK2TgQrAIAhENfb/v3xjLcHqTAc7iLa6niYpwoUxsrWuFkAE6H5ka0fIF5D6H++VmjSCYETLCfoyGgPou7maWbQ+0ZrAgZ45y2yD6DhsB22OsqEQBFFP2Rh+c+BDca+1mDhFdFfyvgcSHlZSVOqzPRYZAdjv2XUMNj0yPb+Neu9U9QtE3Xe5Ll6+JuWmE6I0k4qmmqz9MoKsg/km2WqW1eS7AfxYcO1A5plKAAAAAElFTkSuQmCC';
+const ENEMY_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAAVCAYAAABLy77vAAAArklEQVR4nK2TCw6EIAxEaeP9rzwbsTVQ+oG4kxBjGR5jkdZiQUZV62KveJsB7NRS0DHkFrVZuTteNxXKXVVEtMC4gtCzaHoXLywoTQLghQ2Q7VOb0kAW69OmLEHR7nDqVwbKUoqUSOwZdURpMCTSxnNlVFmw9V1Vg73Tc0QLqPopMcyPP2Z6aifif4Fo945R3J9n+uSytmSTDvpEEVbvkb1L8snR8PyvtLKbbvH/AJnqcvYA1pjxAAAAAElFTkSuQmCC';
+// Wild Doge: a genuinely distinct sprite (not a tinted Doge), scaled below to
+// stay no bigger on screen than a regular Doge.
+const WILD_DOGE_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAYCAYAAADkgu3FAAABGklEQVR4nK2UARKEIAhFYafb5XHtfOzgihFhou2fcSolHigI8E4UnIPPG0jO2TomInJhqyCqDsOKgmgiw2WQ3aJoNjQLKhJYBEKOzTYTFQsRu3YppYtp92Nmz7X2fYfjONqzAjG6dWgidJVSukGcsh+e0RCWc24wBflrw4IEIc7l6QWnQaGa1U5yJ3o1T7bqStkiIj0VCEOqHfQgTjbF52XrvEP0xDDrkIuBB6/pPpK7b9RHF0ccCGdjnbFk3gC8IIn7poyalb5y2vyT4PzPjtORlgXyewQGdU0/bxn1HKxkxLLZ3GDesBmNgtLf7QwDdVD+4c63xRG4bM9lGKsGty5EjGX0igI/Vuiuk4xUZhxgb3j2YbWeWrX/AkS1lS0ntacMAAAAAElFTkSuQmCC';
 // Cinnabar Egg N101 (post level-5 evolution form).
 const CINNABAR_EGG_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAXCAYAAAALHW+jAAABHElEQVR4nK2UMQ7CMAxF7bQSd2BgZWXjGD1BVjYuwIKQuARdu7FxDI7AigR3YKiCQuviunEaKv5SJbVfvt3UCHE5ZR/h1xcA4Fx1CSfZQs01MVhp94MXfq89yKUCnebMwzbVoQlSoDgG4y4J5lXf7pAtF4PyUcIokJ48WcJCUMPdyERN8kAuw91RYIo4zLF+5logh6e4JqH2VWM91IS2UO/hZJl/A9GXfIJV746lSt5RtEXzUfyC/wWpMB5ftvCuZIJOgXnRutfDFOhYJUZuxKApbclDCRqUYBJcs3savNiak9B+zQZFftx+SyZHsbK4c3pmYlDQ+Pq4fM6uMH+toz2SMbSmEdabh4/zrluEwD5ZisO4ww4ataer47wB0xm2aF9FdrsAAAAASUVORK5CYII=';
 
@@ -319,6 +315,8 @@ const eggSpriteImg = new Image();
 eggSpriteImg.src = EGG_SPRITE_SRC;
 const enemySpriteImg = new Image();
 enemySpriteImg.src = ENEMY_SPRITE_SRC;
+const wildDogeSpriteImg = new Image();
+wildDogeSpriteImg.src = WILD_DOGE_SPRITE_SRC;
 document.getElementById('cutsceneCatImg').src = CAT_SPRITE_SRC;
 document.getElementById('cutsceneEggImg').src = EGG_SPRITE_SRC;
 
@@ -340,7 +338,7 @@ const BAG_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCA
 const bagSpriteImg = new Image();
 bagSpriteImg.src = BAG_SPRITE_SRC;
 document.getElementById('cutsceneBagImg').src = BAG_SPRITE_SRC;
-document.getElementById('cutsceneEnemyImg').src = ENEMY_SPRITE_SRC;
+document.getElementById('cutsceneEnemyImg').src = WILD_DOGE_SPRITE_SRC;
 
 // Three more campsite residents: Engineer Cat, Chef Cat, and Medic Cat
 // (Medic Cat has no permanent overworld spot — he only appears briefly
@@ -603,7 +601,7 @@ const PLAYER_STATS = {
   atkRange: 140,     // "1250 max range" is the game's theoretical scale, not used directly here
   speed: 10,
   dashMultiplier: 2,
-  dashDuration: 0.25,  // assumption: not specified, tune freely
+  dashDuration: 0.5,   // 2x its old length, so a dash also covers 2x the ground
   dashCooldown: 1.0,   // assumption: not specified, tune freely
   atkCooldown: 1.23,
   radius: 20,
@@ -627,7 +625,7 @@ const ENEMY_ATK_THICKNESS = 40;
 const WILD_DOGE_DEF = {
   hpMax: 55000, atk: 16500, atkRange: 150,
   atkFrequency: 1.57, speed: 25,
-  halfSize: 40,
+  halfSize: 18,  // same as a regular Doge — Wild Doge is stronger, not bigger
   areaAttack: true,
   isBehemoth: true,
   traits: [],
@@ -697,6 +695,7 @@ let campEmergency = 'none'; // 'none' | 'alerted' | 'encounter' | 'fled'
 let campDestroyed = false;
 let bagDropped = false; // Researcher Cat's bag + egg, dropped in the forest during the retreat
 let wildDoge = null;
+let campNpcAtkTimers = {};
 
 // Behemoth Base save points: 3 independent slots in localStorage, one
 // "active" slot per session (chosen at the file-select screen, or implied by
@@ -766,17 +765,34 @@ function openSaveLoadMenu() {
     revealLength: 0, charTimer: 0, done: false,
     choice: true, choicesRendered: false,
     choices: [
-      {
-        label: 'SAVE',
-        onSelect: () => {
-          const data = currentSaveData();
-          writeSaveSlot(activeSaveSlot, data);
-          respawnPoint = { x: data.respawnX, y: data.respawnY };
-          addToast('Saved to Slot ' + activeSaveSlot + '!');
-        },
-      },
+      { label: 'SAVE', onSelect: () => openSaveMenu() },
       { label: 'LOAD', onSelect: () => openLoadMenu() },
     ],
+  };
+}
+function openSaveMenu() {
+  const choices = [];
+  for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
+    const existing = readSaveSlot(slot);
+    const label = existing
+      ? `Slot ${slot}: Lv ${existing.eggLevel} · ${(existing.metaXP || 0).toLocaleString()} XP (overwrite)`
+      : `Slot ${slot}: Empty`;
+    choices.push({
+      label,
+      onSelect: () => {
+        activeSaveSlot = slot;
+        const data = currentSaveData();
+        writeSaveSlot(slot, data);
+        respawnPoint = { x: data.respawnX, y: data.respawnY };
+        addToast('Saved to Slot ' + slot + '!');
+      },
+    });
+  }
+  activeDialogue = {
+    npc: { name: 'Behemoth Base' },
+    ...buildDialogueText([{ text: 'Choose a file to save to:' }]),
+    revealLength: 0, charTimer: 0, done: false,
+    choice: true, choicesRendered: false, choices,
   };
 }
 function openLoadMenu() {
@@ -884,33 +900,55 @@ function resetCampNpcPositions() {
     if (pos) { npc.x = pos.x; npc.y = pos.y; }
   }
 }
-// When the Wild Doge attacks, every NPC flees to where Biologist Cat normally stands.
+// When the Wild Doge attacks, every NPC (plus Medic Cat, who has no normal
+// overworld spot of his own) flees to where Biologist Cat normally stands.
+// Offsets are spaced generously apart since these sprites are much bigger
+// than the old placeholder art.
+const CAMP_HUDDLE_OFFSETS = {
+  hunter:   { x: -85, y: 50 },
+  explorer: { x: 85, y: 50 },
+  engineer: { x: -100, y: -20 },
+  chef:     { x: 100, y: -20 },
+  medic:    { x: 0, y: 90 },
+};
+// Medic Cat is drawn/attacks like the other huddled NPCs during the
+// emergency, without being a permanent ZONES.start.npcs entry (so his usual
+// heal-at-tent flow is untouched outside the encounter).
+const medicCampNpc = { id: 'medic', name: 'Medic Cat', sprite: medicCatSpriteImg, spriteW: 54, spriteH: 48, x: 0, y: 0 };
 function applyCampEmergencyVisuals() {
   const biologist = ORIGINAL_NPC_POS.biologist;
-  // Every NPC but Biologist Cat himself huddles around his usual spot.
-  const offsets = [
-    { x: -22, y: 26 }, { x: 22, y: 26 }, { x: -26, y: -6 }, { x: 26, y: -6 },
-  ];
-  let i = 0;
   for (const npc of ZONES.start.npcs) {
     if (npc.id === 'biologist') continue;
-    const off = offsets[i % offsets.length];
+    const off = CAMP_HUDDLE_OFFSETS[npc.id];
+    if (!off) continue;
     npc.x = biologist.x + off.x;
     npc.y = biologist.y + off.y;
-    i++;
   }
+  medicCampNpc.x = biologist.x + CAMP_HUDDLE_OFFSETS.medic.x;
+  medicCampNpc.y = biologist.y + CAMP_HUDDLE_OFFSETS.medic.y;
 }
 
-const WILD_DOGE_SPAWN = { x: 150, y: 900 }; // top-left corner of the campsite
+const WILD_DOGE_SPAWN = { x: ORIGINAL_NPC_POS.biologist.x - 90, y: ORIGINAL_NPC_POS.biologist.y - 70 };
+const WILD_DOGE_LEASH_RANGE = 260; // never wanders far from where the NPCs are huddled
 function spawnWildDoge() {
   wildDoge = {
     def: WILD_DOGE_DEF, x: WILD_DOGE_SPAWN.x, y: WILD_DOGE_SPAWN.y, r: WILD_DOGE_DEF.halfSize,
     hp: WILD_DOGE_DEF.hpMax, state: 'idle', facingLeft: false, atkCdTimer: 0, hitFlash: 0,
   };
+  campNpcAtkTimers = {};
 }
 
+// Explorer Cat rushes to help immediately once the alert fires, rather than
+// lingering at his normal spot while the player heads back to camp.
+function relocateExplorerForAlert() {
+  const explorer = ZONES.start.npcs.find(n => n.id === 'explorer');
+  const biologist = ORIGINAL_NPC_POS.biologist;
+  explorer.x = biologist.x + CAMP_HUDDLE_OFFSETS.explorer.x;
+  explorer.y = biologist.y + CAMP_HUDDLE_OFFSETS.explorer.y;
+}
 function triggerEmergencyAlert() {
   campEmergency = 'alerted';
+  relocateExplorerForAlert();
   const explorer = ZONES.start.npcs.find(n => n.id === 'explorer');
   activeDialogue = {
     npc: explorer,
@@ -1052,6 +1090,8 @@ function startGameSession() {
   wildDoge = null;
   if (campEmergency === 'encounter' || campEmergency === 'fled') {
     applyCampEmergencyVisuals();
+  } else if (campEmergency === 'alerted') {
+    relocateExplorerForAlert();
   }
   if (campEmergency === 'encounter') {
     spawnWildDoge();
@@ -1194,12 +1234,40 @@ function updateWildDoge(dt) {
   const d = dist(wd.x, wd.y, player.x, player.y);
   if (d > wd.def.atkRange * 0.9) {
     const a = Math.atan2(player.y - wd.y, player.x - wd.x);
-    wd.x += Math.cos(a) * wd.def.speed * SPEED_SCALE * dt;
-    wd.y += Math.sin(a) * wd.def.speed * SPEED_SCALE * dt;
-    resolveObstacles(wd);
+    const nx = wd.x + Math.cos(a) * wd.def.speed * SPEED_SCALE * dt;
+    const ny = wd.y + Math.sin(a) * wd.def.speed * SPEED_SCALE * dt;
+    // Stay leashed near the camp/NPCs — never wander further from the spawn
+    // point than this, even while chasing a fleeing player.
+    const spawnDist = dist(wd.x, wd.y, WILD_DOGE_SPAWN.x, WILD_DOGE_SPAWN.y);
+    const newSpawnDist = dist(nx, ny, WILD_DOGE_SPAWN.x, WILD_DOGE_SPAWN.y);
+    if (newSpawnDist <= WILD_DOGE_LEASH_RANGE || newSpawnDist < spawnDist) {
+      wd.x = nx; wd.y = ny;
+      resolveObstacles(wd);
+    }
   } else if (wd.atkCdTimer <= 0) {
     wd.atkCdTimer = wd.def.atkFrequency;
     spawnTelegraph(wd.x, wd.y, wd.def.atkRange, ATK_WINDUP, wd.def.atk, 'player', wd.x, wd.y);
+  }
+}
+
+// While the camp is under attack, every huddled NPC (Medic Cat included)
+// takes a swing at the Wild Doge every couple seconds, just like Researcher
+// Cat's own space-bar attack (same translucent red line telegraph) — but
+// purely for show, so their attacks always deal 0 damage.
+const CAMP_NPC_ATK_FREQUENCY = 2.5;
+const CAMP_NPC_ATK_RANGE = 130;
+const CAMP_NPC_ATK_THICKNESS = 30;
+function updateCampEmergencyCombat(dt) {
+  if (!wildDoge || wildDoge.hp <= 0) return;
+  const combatants = ZONES.start.npcs.filter(n => n.id !== 'biologist').concat([medicCampNpc]);
+  for (const npc of combatants) {
+    if (campNpcAtkTimers[npc.id] == null) campNpcAtkTimers[npc.id] = Math.random() * CAMP_NPC_ATK_FREQUENCY;
+    campNpcAtkTimers[npc.id] -= dt;
+    if (campNpcAtkTimers[npc.id] <= 0) {
+      campNpcAtkTimers[npc.id] = CAMP_NPC_ATK_FREQUENCY;
+      const a = Math.atan2(wildDoge.y - npc.y, wildDoge.x - npc.x);
+      spawnLineTelegraph(npc.x, npc.y, a, CAMP_NPC_ATK_RANGE, CAMP_NPC_ATK_THICKNESS, ATK_WINDUP, 0, 'enemies');
+    }
   }
 }
 
@@ -1358,15 +1426,23 @@ function doUpdate(dt) {
         activeDialogue = { npc: near.target, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false };
       } else if (near.type === 'medic') {
         const tentWall = near.target;
-        const parts = [{ text: "Are you tired? If so then you can heal up." }];
-        activeDialogue = {
-          npc: { name: 'Medic Cat' }, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false,
-          choice: true, choicesRendered: false,
-          choices: [
-            { label: 'YES', onSelect: () => startHealSequence(tentWall) },
-            { label: 'NO', onSelect: () => {} },
-          ],
-        };
+        if (campEmergency === 'alerted' || campEmergency === 'encounter') {
+          activeDialogue = {
+            npc: { name: 'Medic Cat' },
+            ...buildDialogueText([{ text: "Medic Cat is busy dealing with the emergency — no time to heal right now!" }]),
+            revealLength: 0, charTimer: 0, done: false,
+          };
+        } else {
+          const parts = [{ text: "Are you tired? If so then you can heal up." }];
+          activeDialogue = {
+            npc: { name: 'Medic Cat' }, ...buildDialogueText(parts), revealLength: 0, charTimer: 0, done: false,
+            choice: true, choicesRendered: false,
+            choices: [
+              { label: 'YES', onSelect: () => startHealSequence(tentWall) },
+              { label: 'NO', onSelect: () => {} },
+            ],
+          };
+        }
       } else if (near.type === 'save') {
         openSaveLoadMenu();
       } else if (near.type === 'bag') {
@@ -1385,6 +1461,7 @@ function doUpdate(dt) {
   checkExits();
   for (const e of enemies) updateEnemy(e, dt);
   updateWildDoge(dt);
+  updateCampEmergencyCombat(dt);
   updateTelegraphs(dt);
   updateLoot();
   updateToasts(dt);
@@ -1669,7 +1746,7 @@ function syncOverlays() {
 }
 
 const ENEMY_SPRITE_SCALE = 2;
-const ENEMY_SPRITE_W = 17 * ENEMY_SPRITE_SCALE, ENEMY_SPRITE_H = 21 * ENEMY_SPRITE_SCALE;
+const ENEMY_SPRITE_W = 18 * ENEMY_SPRITE_SCALE, ENEMY_SPRITE_H = 21 * ENEMY_SPRITE_SCALE;
 
 function drawEnemy(e) {
   if (e.hp <= 0) return;
@@ -1702,19 +1779,21 @@ function drawEnemy(e) {
   }
 }
 
-const WILD_DOGE_SPRITE_SCALE = ENEMY_SPRITE_SCALE * 2.4;
-const WILD_DOGE_SPRITE_W = 17 * WILD_DOGE_SPRITE_SCALE, WILD_DOGE_SPRITE_H = 21 * WILD_DOGE_SPRITE_SCALE;
+// Native art is 26x24; scaled so its width never exceeds a regular Doge's
+// on-screen height (its largest dimension) — the boss must not be bigger.
+const WILD_DOGE_SPRITE_W = ENEMY_SPRITE_H, WILD_DOGE_SPRITE_H = WILD_DOGE_SPRITE_W * (24 / 26);
 function drawWildDoge(wd) {
   if (wd.hp <= 0) return;
   ctx.save();
   ctx.translate(wd.x, wd.y);
   if (!wd.facingLeft) ctx.scale(-1, 1);
-  ctx.drawImage(enemySpriteImg, -WILD_DOGE_SPRITE_W / 2, -WILD_DOGE_SPRITE_H / 2, WILD_DOGE_SPRITE_W, WILD_DOGE_SPRITE_H);
-  // Permanent menacing red tint so the boss reads as distinct from normal Doges.
-  ctx.globalCompositeOperation = 'source-atop';
-  ctx.fillStyle = wd.hitFlash > 0 ? 'rgba(255,255,255,0.75)' : 'rgba(200,20,20,0.35)';
-  ctx.fillRect(-WILD_DOGE_SPRITE_W / 2, -WILD_DOGE_SPRITE_H / 2, WILD_DOGE_SPRITE_W, WILD_DOGE_SPRITE_H);
-  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(wildDogeSpriteImg, -WILD_DOGE_SPRITE_W / 2, -WILD_DOGE_SPRITE_H / 2, WILD_DOGE_SPRITE_W, WILD_DOGE_SPRITE_H);
+  if (wd.hitFlash > 0) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillRect(-WILD_DOGE_SPRITE_W / 2, -WILD_DOGE_SPRITE_H / 2, WILD_DOGE_SPRITE_W, WILD_DOGE_SPRITE_H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
   ctx.restore();
 
   const barW = 90, barH = 8;
@@ -1838,14 +1917,14 @@ function drawHealCutsceneMedic() {
   ctx.textAlign = 'left';
 }
 
-function drawNpc(npc) {
+function drawNpc(npc, interactable = true) {
   const w = npc.spriteW || 32, h = npc.spriteH || 32;
   ctx.drawImage(npc.sprite, npc.x - w / 2, npc.y - h / 2, w, h);
   ctx.fillStyle = '#fff';
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(npc.name, npc.x, npc.y - h / 2 - 10);
-  if (!activeDialogue && dist(player.x, player.y, npc.x, npc.y) < INTERACT_RANGE) {
+  if (interactable && !activeDialogue && dist(player.x, player.y, npc.x, npc.y) < INTERACT_RANGE) {
     ctx.fillStyle = '#ffe27a';
     ctx.fillText('Press Enter', npc.x, npc.y + h / 2 + 16);
   }
@@ -1906,6 +1985,7 @@ function draw() {
   }
   if (ZONES[currentZoneId].campfire) drawCampfire(ZONES[currentZoneId].campfire);
   for (const npc of (ZONES[currentZoneId].npcs || [])) drawNpc(npc);
+  if (currentZoneId === 'start' && (campEmergency === 'encounter' || campEmergency === 'fled')) drawNpc(medicCampNpc, false);
   drawBagProp();
   drawHealCutsceneMedic();
 
@@ -2003,7 +2083,7 @@ function draw() {
     enemyHpEl.childNodes[0].textContent = 'Enemy HP';
     if (enemies.length === 1) enemyHpFill.style.width = (Math.max(0, enemies[0].hp) / ENEMY_DEF.hpMax * 100) + '%';
   }
-  levelXpEl.textContent = 'Lv. ' + eggLevel + '   XP: ' + metaXP.toLocaleString();
+  levelXpEl.textContent = 'XP: ' + metaXP.toLocaleString();
   atkCdFill.style.width = (100 - clamp(player.atkCdTimer / PLAYER_STATS.atkCooldown, 0, 1) * 100) + '%';
   dashCdFill.style.width = (100 - clamp(player.dashCdTimer / PLAYER_STATS.dashCooldown, 0, 1) * 100) + '%';
 }
