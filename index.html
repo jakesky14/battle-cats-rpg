@@ -130,11 +130,23 @@
     max-width: 700px;
   }
   .prompt { font-size: 15px; opacity: 0.85; animation: pulse 1.4s ease-in-out infinite; }
-  #chooseFileSlots { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
-  #chooseFileSlots button {
+  #titleButtons { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+  .title-btn {
     background: #333; border: 1px solid #555; color: #eee;
-    padding: 8px 18px; border-radius: 5px; font-size: 13px; cursor: pointer;
+    padding: 10px 30px; border-radius: 6px; font-size: 15px; cursor: pointer;
+    letter-spacing: 0.5px;
   }
+  .title-btn:hover:not(:disabled) { background: #444; }
+  .title-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #chooseFileSlots { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
+  .file-row { display: flex; align-items: center; gap: 14px; }
+  .file-row span { flex: 1; text-align: left; font-size: 13px; }
+  .delete-btn {
+    background: #6b1f1f; border: 1px solid #a33; color: #fff;
+    padding: 6px 16px; border-radius: 5px; font-size: 12px; cursor: pointer;
+  }
+  .delete-btn:hover:not(:disabled) { background: #872727; }
+  .delete-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
   #cutsceneScreen { justify-content: space-between; }
   .cutscene-stage {
@@ -255,14 +267,18 @@
   </div>
   <div id="blackout"></div>
 
-  <div id="titleScreen" style="cursor:pointer;">
+  <div id="titleScreen">
     <h1>Battle Cats: The Legend of Behemoth Island</h1>
-    <div class="prompt" id="titlePrompt">Press any key (or click anywhere) to Start</div>
+    <div id="titleButtons">
+      <button id="continueBtn" class="title-btn">CONTINUE</button>
+      <button id="newGameBtn" class="title-btn">NEW GAME</button>
+    </div>
   </div>
 
   <div id="chooseFileScreen">
-    <h1 style="font-size:24px;">Choose a File</h1>
+    <h1 style="font-size:20px;">There are no empty files, delete a file.</h1>
     <div id="chooseFileSlots"></div>
+    <button id="chooseFileBackBtn" class="title-btn" style="margin-top:20px;">BACK</button>
   </div>
 
   <div id="cutsceneScreen" style="cursor:pointer;">
@@ -362,8 +378,11 @@ const dashCdFill = document.getElementById('dashCd');
 const msgEl = document.getElementById('msg');
 const toastsEl = document.getElementById('toasts');
 const titleScreenEl = document.getElementById('titleScreen');
+const continueBtnEl = document.getElementById('continueBtn');
+const newGameBtnEl = document.getElementById('newGameBtn');
 const chooseFileScreenEl = document.getElementById('chooseFileScreen');
 const chooseFileSlotsEl = document.getElementById('chooseFileSlots');
+const chooseFileBackBtnEl = document.getElementById('chooseFileBackBtn');
 const cutsceneScreenEl = document.getElementById('cutsceneScreen');
 const cutsceneLineEl = document.getElementById('cutsceneLine');
 const cutsceneBagImgEl = document.getElementById('cutsceneBagImg');
@@ -1346,27 +1365,9 @@ function updateToasts(dt) {
   }
 }
 
-// Secret combo: hold Shift + Z + Enter/Return together to wipe the active
-// save file's data (e.g. to reset progress for testing).
-let prevDeleteComboDown = false;
-function isDeleteComboDown() {
-  return (keys['ShiftLeft'] || keys['ShiftRight']) && keys['KeyZ'] && (keys['Enter'] || keys['NumpadEnter']);
-}
-function checkDeleteCombo() {
-  const down = isDeleteComboDown();
-  if (down && !prevDeleteComboDown) {
-    try { localStorage.removeItem(SAVE_KEY_PREFIX + activeSaveSlot); } catch (e) { /* storage unavailable */ }
-    addToast('Deleted save data for Slot ' + activeSaveSlot + '!');
-  }
-  prevDeleteComboDown = down;
-}
-
 function doUpdate(dt) {
-  checkDeleteCombo();
-
   if (screen === 'title') {
-    if (justPressedEnter()) handleTitleStart();
-    return;
+    return; // waiting on the CONTINUE/NEW GAME button click
   }
   if (screen === 'chooseFile') {
     return; // waiting on a file-slot button click
@@ -1607,49 +1608,71 @@ document.querySelectorAll('.menu-tabs button').forEach(btn => {
   btn.addEventListener('click', () => { menuTab = btn.dataset.tab; renderMenuContent(); });
 });
 
-// Starting from the title screen: if any save file has data, jump straight
-// into the game at the most recent save's Behemoth Base (no cutscene replay,
-// no per-slot "Continue" buttons). Otherwise — a completely fresh install —
-// send the player to the file-select screen before the intro cutscene.
-function handleTitleStart() {
+// Title screen: CONTINUE resumes the most recent save's Behemoth Base
+// (no cutscene replay); NEW GAME starts in the next empty file. If every
+// file is full, the player is sent to a delete-a-file screen instead.
+function refreshTitleButtons() {
+  continueBtnEl.disabled = !getMostRecentSave();
+}
+function handleContinueGame() {
   if (screen !== 'title') return;
   const recent = getMostRecentSave();
-  if (recent) {
-    activeSaveSlot = recent.slot;
-    applySaveData(recent.data);
-    startGameSession();
+  if (!recent) return;
+  activeSaveSlot = recent.slot;
+  applySaveData(recent.data);
+  startGameSession();
+}
+function findFirstEmptySlot() {
+  for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
+    if (!readSaveSlot(slot)) return slot;
+  }
+  return null;
+}
+function beginNewGameInSlot(slot) {
+  activeSaveSlot = slot;
+  resetToNewGame();
+  screen = 'cutscene';
+  cutsceneMode = 'intro';
+  cutsceneIndex = 0;
+}
+function handleNewGame() {
+  if (screen !== 'title' && screen !== 'chooseFile') return;
+  const slot = findFirstEmptySlot();
+  if (slot) {
+    beginNewGameInSlot(slot);
   } else {
-    renderChooseFileSlots();
+    renderDeleteFileScreen();
     screen = 'chooseFile';
   }
 }
-function renderChooseFileSlots() {
+function renderDeleteFileScreen() {
   let html = '';
   for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
     const data = readSaveSlot(slot);
     const label = data
       ? `File ${slot}: Lv ${data.eggLevel} · ${(data.metaXP || 0).toLocaleString()} XP`
-      : `File ${slot}: Empty (start new game)`;
-    html += `<button data-file-slot="${slot}">${label}</button>`;
+      : `File ${slot}: Empty`;
+    html += `<div class="file-row"><span>${label}</span><button class="delete-btn" data-delete-slot="${slot}" ${data ? '' : 'disabled'}>DELETE</button></div>`;
   }
   chooseFileSlotsEl.innerHTML = html;
-  chooseFileSlotsEl.querySelectorAll('[data-file-slot]').forEach(btn => {
+  chooseFileSlotsEl.querySelectorAll('[data-delete-slot]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const slot = parseInt(btn.dataset.fileSlot, 10);
-      const data = readSaveSlot(slot);
-      activeSaveSlot = slot;
-      if (data) applySaveData(data);
-      else resetToNewGame();
-      screen = 'cutscene';
-      cutsceneMode = 'intro';
-      cutsceneIndex = 0;
+      const slot = parseInt(btn.dataset.deleteSlot, 10);
+      try { localStorage.removeItem(SAVE_KEY_PREFIX + slot); } catch (e) { /* storage unavailable */ }
+      addToast('Deleted File ' + slot + '!');
+      // That slot is free now — go ahead and start the new game the player was after.
+      beginNewGameInSlot(slot);
     });
   });
 }
 
-// Click-to-continue fallback in case a keyboard reports the Return/Enter
-// key in a way justPressedEnter() doesn't recognize.
-titleScreenEl.addEventListener('click', () => handleTitleStart());
+continueBtnEl.addEventListener('click', handleContinueGame);
+newGameBtnEl.addEventListener('click', handleNewGame);
+chooseFileBackBtnEl.addEventListener('click', () => {
+  refreshTitleButtons();
+  screen = 'title';
+});
+refreshTitleButtons();
 cutsceneScreenEl.addEventListener('click', () => {
   if (screen === 'cutscene') {
     cutsceneIndex++;
