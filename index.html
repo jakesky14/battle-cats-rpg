@@ -625,7 +625,7 @@ const ENEMY_ATK_THICKNESS = 40;
 const WILD_DOGE_DEF = {
   hpMax: 55000, atk: 16500, atkRange: 150,
   atkFrequency: 1.57, speed: 25,
-  halfSize: 18,  // same as a regular Doge — Wild Doge is stronger, not bigger
+  halfSize: 26,  // scaled up with the bigger sprite (26x24 native vs. Doge's 18x21)
   areaAttack: true,
   isBehemoth: true,
   traits: [],
@@ -840,7 +840,8 @@ function loadZone(zoneId, entryX, entryY) {
   worldH = zone.worldH;
   player.x = entryX;
   player.y = entryY;
-  enemies = (zone.enemySpawns || []).map(s => ({
+  // Once the camp emergency has started, normal Doges never spawn/respawn again.
+  enemies = (zoneId === 'start' && campEmergency !== 'none') ? [] : (zone.enemySpawns || []).map(s => ({
     def: ENEMY_DEF, x: s.x, y: s.y, r: ENEMY_DEF.halfSize,
     spawnX: s.x, spawnY: s.y, offscreenTimer: 0,
     hp: ENEMY_DEF.hpMax, state: 'idle', facingLeft: true, atkCdTimer: 0, hitFlash: 0, lootDropped: false,
@@ -948,6 +949,7 @@ function relocateExplorerForAlert() {
 }
 function triggerEmergencyAlert() {
   campEmergency = 'alerted';
+  enemies = []; // no more normal Doges once the emergency starts
   relocateExplorerForAlert();
   const explorer = ZONES.start.npcs.find(n => n.id === 'explorer');
   activeDialogue = {
@@ -1752,7 +1754,8 @@ function drawEnemy(e) {
   if (e.hp <= 0) return;
   ctx.save();
   ctx.translate(e.x, e.y);
-  if (!e.facingLeft) ctx.scale(-1, 1);
+  // Native art faces right, so mirror it when facing left, not the other way.
+  if (e.facingLeft) ctx.scale(-1, 1);
   ctx.drawImage(enemySpriteImg, -ENEMY_SPRITE_W / 2, -ENEMY_SPRITE_H / 2, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
   if (e.hitFlash > 0) {
     ctx.globalCompositeOperation = 'source-atop';
@@ -1779,14 +1782,16 @@ function drawEnemy(e) {
   }
 }
 
-// Native art is 26x24; scaled so its width never exceeds a regular Doge's
-// on-screen height (its largest dimension) — the boss must not be bigger.
-const WILD_DOGE_SPRITE_W = ENEMY_SPRITE_H, WILD_DOGE_SPRITE_H = WILD_DOGE_SPRITE_W * (24 / 26);
+// Native art is 26x24 (more pixels than the regular Doge's 18x21), drawn at
+// the same per-pixel scale as the regular Doge — no extra size multiplier —
+// so it comes out bigger purely because its source art has more pixels.
+const WILD_DOGE_SPRITE_W = 26 * ENEMY_SPRITE_SCALE, WILD_DOGE_SPRITE_H = 24 * ENEMY_SPRITE_SCALE;
 function drawWildDoge(wd) {
   if (wd.hp <= 0) return;
   ctx.save();
   ctx.translate(wd.x, wd.y);
-  if (!wd.facingLeft) ctx.scale(-1, 1);
+  // Native art faces right, so mirror it when facing left, not the other way.
+  if (wd.facingLeft) ctx.scale(-1, 1);
   ctx.drawImage(wildDogeSpriteImg, -WILD_DOGE_SPRITE_W / 2, -WILD_DOGE_SPRITE_H / 2, WILD_DOGE_SPRITE_W, WILD_DOGE_SPRITE_H);
   if (wd.hitFlash > 0) {
     ctx.globalCompositeOperation = 'source-atop';
