@@ -227,6 +227,19 @@
     cursor: pointer;
   }
   #testModeBtn.active { background: #2e7d32; border-color: #4caf50; color: #fff; }
+  #warpVillageBtn {
+    position: absolute;
+    top: 38px;
+    right: 6px;
+    z-index: 20;
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
 
   #blackout {
     position: absolute;
@@ -242,6 +255,7 @@
 <div id="wrap">
   <canvas id="game" width="960" height="600"></canvas>
   <button id="testModeBtn">Infinite Health: OFF</button>
+  <button id="warpVillageBtn">Warp to Village</button>
 
   <div id="hud">
     <div id="playerHp">Player HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
@@ -394,6 +408,7 @@ const dialogueTextEl = document.getElementById('dialogueText');
 const dialoguePromptEl = document.getElementById('dialoguePrompt');
 const dialogueChoicesEl = document.getElementById('dialogueChoices');
 const testModeBtn = document.getElementById('testModeBtn');
+const warpVillageBtn = document.getElementById('warpVillageBtn');
 const blackoutEl = document.getElementById('blackout');
 
 // Raw "speed" stats are small design units, not pixels/sec on their own.
@@ -517,6 +532,8 @@ const ZONES = {
       { x: 950, y: 1300, w: 70, h: 60, visual: 'house' },
       { x: 650, y: 1250, w: 70, h: 60, visual: 'house' },
       { x: 600, y: 950, w: 70, h: 60, visual: 'house' },
+      // Behemoth Base save point, in the open town square
+      { x: 1130, y: 780, w: 70, h: 150, visual: 'behemothBase', interactable: 'save' },
     ],
     paths: [
       { points: [[1000, 1000], [1000, 80]], width: 26 },
@@ -887,6 +904,16 @@ testModeBtn.addEventListener('click', () => {
   infiniteHealth = !infiniteHealth;
   testModeBtn.textContent = 'Infinite Health: ' + (infiniteHealth ? 'ON' : 'OFF');
   testModeBtn.classList.toggle('active', infiniteHealth);
+});
+
+// Testing shortcut: jump straight to the village from anywhere in-game.
+warpVillageBtn.addEventListener('click', () => {
+  if (screen !== 'game') return;
+  activeDialogue = null;
+  menuOpen = false;
+  loadZone('village', ZONES.village.playerStart.x, ZONES.village.playerStart.y);
+  updateCamera();
+  addToast('Warped to the Village!');
 });
 
 const inventory = { stones: { red: 0, purple: 0 } };
