@@ -1199,6 +1199,11 @@ function relocateExplorerForAlert() {
 }
 function triggerEmergencyAlert() {
   campEmergency = 'alerted';
+  // The stones that triggered this are spent here — they don't carry over
+  // to (and shortcut) the later Cinnabar Egg -> Courier Cat evolution, which
+  // needs its own stones found in the forest.
+  inventory.stones.red -= EVOLVE_STONE_COST;
+  inventory.stones.purple -= EVOLVE_STONE_COST;
   enemies = []; // no more normal Doges once the emergency starts
   relocateExplorerForAlert();
   const explorer = ZONES.start.npcs.find(n => n.id === 'explorer');
