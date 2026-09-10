@@ -325,6 +325,11 @@ const catSpriteImg = new Image();
 catSpriteImg.src = CAT_SPRITE_SRC;
 const eggSpriteImg = new Image();
 eggSpriteImg.src = EGG_SPRITE_SRC;
+const cinnabarEggSpriteImg = new Image();
+cinnabarEggSpriteImg.src = CINNABAR_EGG_SPRITE_SRC;
+// Courier Cat has no custom art yet — reuses Researcher Cat's sprite with a
+// golden tint (see drawPlayer) as a placeholder for its evolved form.
+const courierCatSpriteImg = catSpriteImg;
 const enemySpriteImg = new Image();
 enemySpriteImg.src = ENEMY_SPRITE_SRC;
 const wildDogeSpriteImg = new Image();
@@ -491,7 +496,57 @@ const ZONES = {
             ],
       },
     ],
-    exits: [],
+    exits: [
+      { x: 20, y: 850, w: 60, h: 200, toZone: 'forest', toX: 300, toY: 1500, label: 'Into the Forest' },
+    ],
+  },
+  // Whisperwood Forest: reached after the camp-emergency retreat, while
+  // playing as the Cinnabar Egg. Open plains on the west and east sides,
+  // separated by a dense woodland maze hiding a clearing where Researcher
+  // Cat's dropped bag (and its Behemoth Stones) ended up.
+  forest: {
+    name: 'Whisperwood Forest',
+    worldW: 4000, worldH: 3000,
+    playerStart: { x: 300, y: 1500 },
+    walls: [
+      // sparse decorative trees scattered across the open plains
+      { x: 700, y: 700, w: 80, h: 80, visual: 'tree' },
+      { x: 1000, y: 2200, w: 80, h: 80, visual: 'tree' },
+      { x: 500, y: 1800, w: 80, h: 80, visual: 'tree' },
+      { x: 2900, y: 700, w: 80, h: 80, visual: 'tree' },
+      { x: 3300, y: 2200, w: 80, h: 80, visual: 'tree' },
+      { x: 3000, y: 1900, w: 80, h: 80, visual: 'tree' },
+      // dense woodland maze hiding the clearing with the bag — a hollow
+      // rectangle of trees, open only through a gap in the south wall
+      { x: 1750, y: 1100, w: 90, h: 90, visual: 'tree' },
+      { x: 1840, y: 1100, w: 90, h: 90, visual: 'tree' },
+      { x: 1930, y: 1100, w: 90, h: 90, visual: 'tree' },
+      { x: 2020, y: 1100, w: 90, h: 90, visual: 'tree' },
+      { x: 2110, y: 1100, w: 90, h: 90, visual: 'tree' },
+      { x: 1750, y: 1190, w: 90, h: 90, visual: 'tree' },
+      { x: 1750, y: 1280, w: 90, h: 90, visual: 'tree' },
+      { x: 1750, y: 1370, w: 90, h: 90, visual: 'tree' },
+      { x: 1750, y: 1460, w: 90, h: 90, visual: 'tree' },
+      { x: 1750, y: 1550, w: 90, h: 90, visual: 'tree' },
+      { x: 2110, y: 1190, w: 90, h: 90, visual: 'tree' },
+      { x: 2110, y: 1280, w: 90, h: 90, visual: 'tree' },
+      { x: 2110, y: 1370, w: 90, h: 90, visual: 'tree' },
+      { x: 2110, y: 1460, w: 90, h: 90, visual: 'tree' },
+      { x: 2110, y: 1550, w: 90, h: 90, visual: 'tree' },
+      { x: 1750, y: 1610, w: 90, h: 90, visual: 'tree' },
+      { x: 1840, y: 1610, w: 90, h: 90, visual: 'tree' },
+      { x: 2110, y: 1610, w: 90, h: 90, visual: 'tree' },
+      // (gap between x=1930 and x=2110 at y=1610 is the entrance)
+    ],
+    enemySpawns: [
+      { x: 700, y: 1000 }, { x: 1100, y: 1900 }, { x: 500, y: 2400 }, { x: 900, y: 600 },
+      { x: 2900, y: 1000 }, { x: 3300, y: 1900 }, { x: 3600, y: 700 }, { x: 3000, y: 2400 },
+      { x: 1900, y: 1350, kind: 'red' }, { x: 2050, y: 1450, kind: 'red' },
+    ],
+    npcs: [],
+    exits: [
+      { x: 20, y: 1420, w: 60, h: 160, toZone: 'start', toX: 100, toY: 900, label: 'Back to Campsite' },
+    ],
   },
 };
 
@@ -608,22 +663,64 @@ function hasLineOfSight(x1, y1, x2, y2) {
   return true;
 }
 
-const PLAYER_STATS = {
-  hpMax: 100,
-  atk: 8,
-  atkRange: 140,     // "1250 max range" is the game's theoretical scale, not used directly here
-  speed: 10,
-  dashMultiplier: 2,
-  dashDuration: 0.5,   // 2x its old length, so a dash also covers 2x the ground
-  dashCooldown: 1.0,   // assumption: not specified, tune freely
-  atkCooldown: 1.23,
-  radius: 20,
+// Three playable forms across the story: Researcher Cat (line attack),
+// Cinnabar Egg (weak, fragile, same line-attack style — meant for evading
+// Wild Doges more than fighting them), and Courier Cat (the evolved form,
+// a strong circular-AoE attacker). Dash mechanics are shared across all forms.
+const DASH_CONFIG = { dashMultiplier: 2, dashDuration: 0.5, dashCooldown: 1.0 };
+const FORM_BASE_STATS = {
+  researcher:  { hpMax: 100, atk: 8,   atkRange: 140, speed: 10, atkCooldown: 1.23,  radius: 20, atkShape: 'line' },
+  cinnabarEgg: { hpMax: 100, atk: 2,   atkRange: 100, speed: 5,  atkCooldown: 15.70, radius: 20, atkShape: 'line' },
+  courierCat:  { hpMax: 880, atk: 415, atkRange: 250, speed: 25, atkCooldown: 2.13,  radius: 24, atkShape: 'circle' },
 };
+// Every level past 1 (cinnabarEgg/courierCat only) adds +20 HP and +20 ATK.
+const FORM_LEVEL_STAT_BONUS = 20;
+function nextFormLevelCost(level) { return 2000 * level; }
+
+// Derived from existing story flags rather than tracked separately, so it
+// can never drift out of sync with them.
+function getPlayerForm() {
+  if (eggEvolved2) return 'courierCat';
+  if (campEmergency === 'fled') return 'cinnabarEgg';
+  return 'researcher';
+}
+function currentFormLevel() {
+  const form = getPlayerForm();
+  if (form === 'cinnabarEgg') return cinnabarEggLevel;
+  if (form === 'courierCat') return courierCatLevel;
+  return 1;
+}
+let PLAYER_STATS = null;
+function recomputePlayerStats() {
+  const form = getPlayerForm();
+  const base = FORM_BASE_STATS[form];
+  const bonus = form === 'researcher' ? 0 : FORM_LEVEL_STAT_BONUS * (currentFormLevel() - 1);
+  PLAYER_STATS = { ...base, ...DASH_CONFIG, hpMax: base.hpMax + bonus, atk: base.atk + bonus };
+}
+
+// Courier Cat combat traits: 3x damage to red-tagged enemies, "Behemoth
+// Slayer" (2.5x damage dealt to / 0.6x damage taken from Doge-kind enemies),
+// and a 5% chance per incoming hit to be fully immune for 1 second.
+const COURIER_CAT_RED_MULT = 3;
+const COURIER_CAT_SLAYER_DEALT_MULT = 2.5;
+const COURIER_CAT_SLAYER_TAKEN_MULT = 0.6;
+const COURIER_CAT_DODGE_CHANCE = 0.05;
+const COURIER_CAT_IMMUNE_DURATION = 1.0;
 
 const ENEMY_DEF = {
   hpMax: 90, atk: 8, atkRange: 110,   // "4000 max range" is the game's theoretical scale, not used directly here
   atkFrequency: 1.57, speed: 10,
   halfSize: 18,
+  isDoge: true,
+};
+// A tougher forest variant — same Doge, tinted red — that Courier Cat
+// specializes against (COURIER_CAT_RED_MULT).
+const RED_DOGE_DEF = {
+  hpMax: 300, atk: 20, atkRange: 110,
+  atkFrequency: 1.57, speed: 10,
+  halfSize: 18,
+  isDoge: true,
+  colorTag: 'red',
 };
 const ENEMY_XP_DROP = 8000;
 
@@ -641,6 +738,7 @@ const WILD_DOGE_DEF = {
   halfSize: 26,  // scaled up with the bigger sprite (26x24 native vs. Doge's 18x21)
   areaAttack: true,
   isBehemoth: true,
+  isDoge: true,
   traits: [],
   survive: true,       // 30% chance to revive at 1 HP instead of dying
   surviveChance: 0.30,
@@ -701,6 +799,12 @@ testModeBtn.addEventListener('click', () => {
 
 const inventory = { stones: { red: 0, purple: 0 } };
 let respawnPoint = { x: ZONES.start.playerStart.x, y: ZONES.start.playerStart.y };
+let respawnZone = 'start';
+// Leveling for the post-emergency forms (see getPlayerForm()) — a separate
+// progression axis from the pre-emergency Ancient Egg leveling above.
+let cinnabarEggLevel = 1;
+let courierCatLevel = 1;
+let forestBagCollected = false;
 
 // Story/event state (see the camp-emergency sequence below). Persisted with
 // the save data so reloading doesn't undo story progress.
@@ -743,10 +847,11 @@ function getMostRecentSave() {
 function currentSaveData() {
   return {
     metaXP, eggLevel, eggEvolved2,
+    cinnabarEggLevel, courierCatLevel, forestBagCollected,
     stonesRed: inventory.stones.red, stonesPurple: inventory.stones.purple,
     tutorialFlags: { ...tutorialFlags },
     campEmergency, campDestroyed, bagDropped,
-    respawnX: player.x, respawnY: player.y,
+    respawnX: player.x, respawnY: player.y, respawnZone: currentZoneId,
     savedAt: Date.now(),
   };
 }
@@ -754,21 +859,29 @@ function applySaveData(data) {
   metaXP = data.metaXP || 0;
   eggLevel = data.eggLevel || 0;
   eggEvolved2 = !!data.eggEvolved2;
+  cinnabarEggLevel = data.cinnabarEggLevel || 1;
+  courierCatLevel = data.courierCatLevel || 1;
+  forestBagCollected = !!data.forestBagCollected;
   inventory.stones.red = data.stonesRed || 0;
   inventory.stones.purple = data.stonesPurple || 0;
   if (data.tutorialFlags) tutorialFlags = { ...tutorialFlags, ...data.tutorialFlags };
   campEmergency = data.campEmergency || 'none';
   campDestroyed = !!data.campDestroyed;
   bagDropped = !!data.bagDropped;
+  respawnZone = data.respawnZone || 'start';
   if (data.respawnX != null && data.respawnY != null) {
     respawnPoint = { x: data.respawnX, y: data.respawnY };
   }
+  recomputePlayerStats();
 }
 function resetToNewGame() {
   metaXP = 0; eggLevel = 0; eggEvolved2 = false;
+  cinnabarEggLevel = 1; courierCatLevel = 1; forestBagCollected = false;
   inventory.stones.red = 0; inventory.stones.purple = 0;
   campEmergency = 'none'; campDestroyed = false; bagDropped = false; wildDoge = null;
+  respawnZone = 'start';
   respawnPoint = { x: ZONES.start.playerStart.x, y: ZONES.start.playerStart.y };
+  recomputePlayerStats();
   resetCampNpcPositions();
 }
 function openSaveLoadMenu() {
@@ -798,6 +911,7 @@ function openSaveMenu() {
         const data = currentSaveData();
         writeSaveSlot(slot, data);
         respawnPoint = { x: data.respawnX, y: data.respawnY };
+        respawnZone = data.respawnZone;
         addToast('Saved to Slot ' + slot + '!');
       },
     });
@@ -878,11 +992,14 @@ function loadZone(zoneId, entryX, entryY) {
   player.x = entryX;
   player.y = entryY;
   // Once the camp emergency has started, normal Doges never spawn/respawn again.
-  enemies = (zoneId === 'start' && campEmergency !== 'none') ? [] : (zone.enemySpawns || []).map(s => ({
-    def: ENEMY_DEF, x: s.x, y: s.y, r: ENEMY_DEF.halfSize,
-    spawnX: s.x, spawnY: s.y, offscreenTimer: 0,
-    hp: ENEMY_DEF.hpMax, state: 'idle', facingLeft: true, atkCdTimer: 0, hitFlash: 0, lootDropped: false,
-  }));
+  enemies = (zoneId === 'start' && campEmergency !== 'none') ? [] : (zone.enemySpawns || []).map(s => {
+    const def = s.kind === 'red' ? RED_DOGE_DEF : ENEMY_DEF;
+    return {
+      def, x: s.x, y: s.y, r: def.halfSize,
+      spawnX: s.x, spawnY: s.y, offscreenTimer: 0,
+      hp: def.hpMax, state: 'idle', facingLeft: true, atkCdTimer: 0, hitFlash: 0, lootDropped: false,
+    };
+  });
   telegraphs = [];
   loot = [];
   activeDialogue = null;
@@ -921,9 +1038,13 @@ function getNearestInteractable() {
     const d = dist(player.x, player.y, cx, cy);
     if (d < bestDist) { bestDist = d; best = { type: w.interactable, target: w }; }
   }
-  if (bagDropped) {
+  if (currentZoneId === 'start' && bagDropped) {
     const d = dist(player.x, player.y, BAG_PROP.x, BAG_PROP.y);
     if (d < bestDist) { bestDist = d; best = { type: 'bag', target: BAG_PROP }; }
+  }
+  if (currentZoneId === 'forest' && !forestBagCollected) {
+    const d = dist(player.x, player.y, FOREST_BAG_PROP.x, FOREST_BAG_PROP.y);
+    if (d < bestDist) { bestDist = d; best = { type: 'forestBag', target: FOREST_BAG_PROP }; }
   }
   return best;
 }
@@ -1011,6 +1132,9 @@ function triggerCampEncounter() {
 
 // Researcher Cat's bag, dropped near the forest edge after the retreat.
 const BAG_PROP = { x: 90, y: 880 };
+// The SAME bag, actually found deep in the forest's hidden woodland clearing
+// — this is where its Behemoth Stones turn out to be.
+const FOREST_BAG_PROP = { x: 1975, y: 1400 };
 function beginRetreatCutscene() {
   screen = 'cutscene';
   cutsceneMode = 'retreat';
@@ -1021,12 +1145,19 @@ function finishRetreatCutscene() {
   campEmergency = 'fled';
   bagDropped = true;
   wildDoge = null;
+  // The player now controls the Cinnabar Egg (see getPlayerForm()), lost in
+  // the forest — a new zone, reached here instead of returning to camp.
+  cinnabarEggLevel = 1;
+  recomputePlayerStats();
   player.hp = PLAYER_STATS.hpMax;
-  player.x = respawnPoint.x;
-  player.y = respawnPoint.y;
+  player.r = PLAYER_STATS.radius;
+  player.immuneTimer = 0;
+  respawnZone = 'forest';
+  respawnPoint = { x: ZONES.forest.playerStart.x, y: ZONES.forest.playerStart.y };
+  loadZone('forest', respawnPoint.x, respawnPoint.y);
   screen = 'game';
   updateCamera();
-  addToast("Researcher Cat lost the bag and the egg in the forest!");
+  addToast("Researcher Cat lost the bag and the egg in the forest! You are now the Cinnabar Egg.");
 }
 
 // Medic Cat's heal-at-tent sequence: he steps out of the tent, the screen
@@ -1104,18 +1235,19 @@ function renderDialogueHtml(d) {
 
 function startGameSession() {
   screen = 'game';
+  recomputePlayerStats();
   player = {
     x: 0, y: 0, r: PLAYER_STATS.radius,
     hp: PLAYER_STATS.hpMax, facing: 0,
     isDashing: false, dashTimer: 0, dashCdTimer: 0,
-    atkCdTimer: 0, hitFlash: 0,
+    atkCdTimer: 0, hitFlash: 0, immuneTimer: 0,
   };
   particles = [];
   toasts = [];
   gameOver = false;
   menuOpen = false;
   activeDialogue = null;
-  loadZone('start', respawnPoint.x, respawnPoint.y);
+  loadZone(respawnZone, respawnPoint.x, respawnPoint.y);
   if (!tutorialFlags.move) {
     tutorialFlags.move = true;
     frozenMessage = 'Use the arrow keys to move!';
@@ -1174,6 +1306,7 @@ function updatePlayer(dt) {
   if (player.atkCdTimer > 0) player.atkCdTimer -= dt;
   if (player.dashCdTimer > 0) player.dashCdTimer -= dt;
   if (player.hitFlash > 0) player.hitFlash -= dt;
+  if (player.immuneTimer > 0) player.immuneTimer -= dt;
 
   let mx = 0, my = 0;
   if (keys['ArrowUp']) my -= 1;
@@ -1211,7 +1344,11 @@ function updatePlayer(dt) {
 
   if (justPressed('Space') && player.atkCdTimer <= 0) {
     player.atkCdTimer = PLAYER_STATS.atkCooldown;
-    spawnLineTelegraph(player.x, player.y, player.facing, PLAYER_STATS.atkRange, PLAYER_ATK_THICKNESS, ATK_WINDUP, PLAYER_STATS.atk, 'enemies');
+    if (PLAYER_STATS.atkShape === 'circle') {
+      spawnTelegraph(player.x, player.y, PLAYER_STATS.atkRange, ATK_WINDUP, PLAYER_STATS.atk, 'enemies', player.x, player.y);
+    } else {
+      spawnLineTelegraph(player.x, player.y, player.facing, PLAYER_STATS.atkRange, PLAYER_ATK_THICKNESS, ATK_WINDUP, PLAYER_STATS.atk, 'enemies');
+    }
   }
 }
 
@@ -1321,16 +1458,33 @@ function updateTelegraphs(dt) {
         if (t.target === 'player') {
           if (player.hp > 0 && telegraphHits(t, player.x, player.y, player.r) &&
               hasLineOfSight(t.ownerX, t.ownerY, player.x, player.y)) {
-            if (!infiniteHealth) player.hp -= t.damage;
-            player.hitFlash = 0.2;
-            spawnHit(player.x, player.y, '#ff6161');
+            const isCourierCat = getPlayerForm() === 'courierCat';
+            if (isCourierCat && player.immuneTimer > 0) {
+              // Fully immune — no damage, no dodge roll needed.
+            } else if (isCourierCat && Math.random() < COURIER_CAT_DODGE_CHANCE) {
+              player.immuneTimer = COURIER_CAT_IMMUNE_DURATION;
+              addToast('Courier Cat dodged the attack!');
+              spawnHit(player.x, player.y, '#8fe0ff');
+            } else {
+              let dmg = t.damage;
+              if (isCourierCat) dmg *= COURIER_CAT_SLAYER_TAKEN_MULT;
+              if (!infiniteHealth) player.hp -= dmg;
+              player.hitFlash = 0.2;
+              spawnHit(player.x, player.y, '#ff6161');
+            }
           }
         } else {
+          const isCourierCat = getPlayerForm() === 'courierCat';
           for (const en of enemies) {
             if (en.hp <= 0) continue;
             if (telegraphHits(t, en.x, en.y, en.r) &&
                 hasLineOfSight(t.ownerX, t.ownerY, en.x, en.y)) {
-              en.hp -= t.damage;
+              let dmg = t.damage;
+              if (isCourierCat) {
+                if (en.def.colorTag === 'red') dmg *= COURIER_CAT_RED_MULT;
+                if (en.def.isDoge) dmg *= COURIER_CAT_SLAYER_DEALT_MULT;
+              }
+              en.hp -= dmg;
               en.hitFlash = 0.2;
               spawnHit(en.x, en.y, '#ffd35c');
             }
@@ -1338,7 +1492,9 @@ function updateTelegraphs(dt) {
           if (wildDoge && wildDoge.hp > 0 &&
               telegraphHits(t, wildDoge.x, wildDoge.y, wildDoge.r) &&
               hasLineOfSight(t.ownerX, t.ownerY, wildDoge.x, wildDoge.y)) {
-            wildDoge.hp -= t.damage;
+            let wdDmg = t.damage;
+            if (isCourierCat && wildDoge.def.isDoge) wdDmg *= COURIER_CAT_SLAYER_DEALT_MULT;
+            wildDoge.hp -= wdDmg;
             wildDoge.hitFlash = 0.2;
             spawnHit(wildDoge.x, wildDoge.y, '#ffd35c');
             if (wildDoge.hp <= 0) {
@@ -1469,7 +1625,16 @@ function doUpdate(dt) {
       } else if (near.type === 'bag') {
         activeDialogue = {
           npc: { name: 'Researcher Cat\'s Bag' },
-          ...buildDialogueText([{ text: "It's torn and empty... the egg is nowhere to be found." }]),
+          ...buildDialogueText([{ text: "It's torn and mostly empty... but there are drag marks leading deeper into the forest." }]),
+          revealLength: 0, charTimer: 0, done: false,
+        };
+      } else if (near.type === 'forestBag') {
+        forestBagCollected = true;
+        inventory.stones.red += EVOLVE_STONE_COST;
+        inventory.stones.purple += EVOLVE_STONE_COST;
+        activeDialogue = {
+          npc: { name: 'The Bag' },
+          ...buildDialogueText([{ text: `You found it! Inside are ${EVOLVE_STONE_COST} Red and ${EVOLVE_STONE_COST} Purple Behemoth Stones — enough to evolve!` }]),
           revealLength: 0, charTimer: 0, done: false,
         };
       }
@@ -1554,39 +1719,59 @@ function renderMenuContent() {
         <div style="position:absolute; left:76px; top:84px; font-size:12px;">You are here</div>
       </div>`;
   } else if (menuTab === 'upgrade') {
-    const stage = getEggStage();
-    if (stage === 'ancient') {
-      const cost = LEVEL_COSTS[eggLevel];
+    const form = getPlayerForm();
+    if (form === 'researcher') {
+      const stage = getEggStage();
+      if (stage === 'ancient') {
+        const cost = LEVEL_COSTS[eggLevel];
+        const canAfford = metaXP >= cost;
+        html = `
+          <h2 style="display:flex; align-items:center; gap:12px;">
+            <img src="${EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="48">
+            Ancient Egg N101
+          </h2>
+          <p>Level: ${eggLevel} / ${EVOLVE_LEVEL}</p>
+          <p>XP: ${metaXP.toLocaleString()}</p>
+          <p>Next level cost: ${cost.toLocaleString()} XP</p>
+          <button id="upgradeBtn" class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Upgrade</button>`;
+      } else {
+        html = `
+          <h2 style="display:flex; align-items:center; gap:12px;">
+            <img src="${CINNABAR_EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="46">
+            Cinnabar Egg N101
+          </h2>
+          <p style="color:#8cff8c">The egg pulses with newfound energy... its next form is still a mystery!</p>`;
+      }
+    } else if (form === 'cinnabarEgg') {
+      const lvl = cinnabarEggLevel;
+      const cost = nextFormLevelCost(lvl);
+      const canAfford = metaXP >= cost;
+      const canEvolve = inventory.stones.red >= EVOLVE_STONE_COST && inventory.stones.purple >= EVOLVE_STONE_COST;
+      html = `
+        <h2 style="display:flex; align-items:center; gap:12px;">
+          <img src="${CINNABAR_EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="46">
+          Cinnabar Egg N101
+        </h2>
+        <p>Level ${lvl} — HP ${PLAYER_STATS.hpMax}, ATK ${PLAYER_STATS.atk}</p>
+        <p>XP: ${metaXP.toLocaleString()}</p>
+        <p>Next level cost: ${cost.toLocaleString()} XP (+${FORM_LEVEL_STAT_BONUS} HP / +${FORM_LEVEL_STAT_BONUS} ATK)</p>
+        <button id="levelUpBtn" class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Level Up</button>
+        <hr style="opacity:.2; margin:14px 0;">
+        <p>Evolve into Courier Cat — requires Red Behemoth Stone x${EVOLVE_STONE_COST} and Purple Behemoth Stone x${EVOLVE_STONE_COST}</p>
+        <p style="opacity:.7">You have: ${inventory.stones.red} red, ${inventory.stones.purple} purple</p>
+        ${!forestBagCollected ? '<p style="opacity:.7">Find the bag hidden somewhere in the forest...</p>' : ''}
+        <button id="evolveBtn" class="upgrade-btn" ${canEvolve ? '' : 'disabled'}>EVOLVE</button>`;
+    } else {
+      const lvl = courierCatLevel;
+      const cost = nextFormLevelCost(lvl);
       const canAfford = metaXP >= cost;
       html = `
-        <h2 style="display:flex; align-items:center; gap:12px;">
-          <img src="${EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="48">
-          Ancient Egg N101
-        </h2>
-        <p>Level: ${eggLevel} / ${EVOLVE_LEVEL}</p>
+        <h2>Courier Cat</h2>
+        <p>Level ${lvl} — HP ${PLAYER_STATS.hpMax}, ATK ${PLAYER_STATS.atk}</p>
         <p>XP: ${metaXP.toLocaleString()}</p>
-        <p>Next level cost: ${cost.toLocaleString()} XP</p>
-        <button id="upgradeBtn" class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Upgrade</button>`;
-    } else if (stage === 'cinnabar') {
-      const canEvolve = inventory.stones.red >= EVOLVE_STONE_COST && inventory.stones.purple >= EVOLVE_STONE_COST;
-      const emergencyBlocked = campEmergency === 'alerted' || campEmergency === 'encounter';
-      html = `
-        <h2 style="display:flex; align-items:center; gap:12px;">
-          <img src="${CINNABAR_EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="46">
-          Cinnabar Egg N101
-        </h2>
-        <p>XP: ${metaXP.toLocaleString()}</p>
-        <p>Requires Red Behemoth Stone x${EVOLVE_STONE_COST} and Purple Behemoth Stone x${EVOLVE_STONE_COST}</p>
-        <p style="opacity:.7">You have: ${inventory.stones.red} red, ${inventory.stones.purple} purple</p>
-        ${emergencyBlocked ? '<p style="color:#ff6b6b">There is an Emergency at camp! No time!</p>' : ''}
-        <button id="upgradeBtn" class="upgrade-btn" ${canEvolve ? '' : 'disabled'}>EVOLVE</button>`;
-    } else {
-      html = `
-        <h2 style="display:flex; align-items:center; gap:12px;">
-          <img src="${CINNABAR_EGG_SPRITE_SRC}" class="pixel-sprite" width="40" height="46">
-          Cinnabar Egg N101
-        </h2>
-        <p style="color:#8cff8c">The egg pulses with newfound energy... its next form is still a mystery!</p>`;
+        <p>Next level cost: ${cost.toLocaleString()} XP (+${FORM_LEVEL_STAT_BONUS} HP / +${FORM_LEVEL_STAT_BONUS} ATK)</p>
+        <button id="levelUpBtn" class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Level Up</button>
+        <p style="opacity:.7; margin-top:14px;">Behemoth Slayer: ${COURIER_CAT_SLAYER_DEALT_MULT}x damage dealt to Doge-kind enemies, ${COURIER_CAT_SLAYER_TAKEN_MULT}x damage taken from them. ${COURIER_CAT_RED_MULT}x damage to red enemies. ${COURIER_CAT_DODGE_CHANCE * 100}% chance per hit to be immune for ${COURIER_CAT_IMMUNE_DURATION}s.</p>`;
     }
   } else {
     const rows = [];
@@ -1604,21 +1789,42 @@ function renderMenuContent() {
   const btn = document.getElementById('upgradeBtn');
   if (btn) {
     btn.onclick = () => {
-      const stage = getEggStage();
-      if (stage === 'ancient' && metaXP >= LEVEL_COSTS[eggLevel]) {
+      if (getEggStage() === 'ancient' && metaXP >= LEVEL_COSTS[eggLevel]) {
         metaXP -= LEVEL_COSTS[eggLevel];
         eggLevel++;
         if (eggLevel >= EVOLVE_LEVEL) addToast('Your egg evolved into Cinnabar Egg N101!');
         renderMenuContent();
-      } else if (stage === 'cinnabar' && (campEmergency === 'alerted' || campEmergency === 'encounter')) {
-        addToast('There is an Emergency at camp! No time!');
-      } else if (stage === 'cinnabar' && inventory.stones.red >= EVOLVE_STONE_COST && inventory.stones.purple >= EVOLVE_STONE_COST) {
-        inventory.stones.red -= EVOLVE_STONE_COST;
-        inventory.stones.purple -= EVOLVE_STONE_COST;
-        eggEvolved2 = true;
-        addToast('The egg trembles with energy...');
-        renderMenuContent();
       }
+    };
+  }
+  const levelUpBtn = document.getElementById('levelUpBtn');
+  if (levelUpBtn) {
+    levelUpBtn.onclick = () => {
+      const form = getPlayerForm();
+      const cost = nextFormLevelCost(currentFormLevel());
+      if (metaXP < cost) return;
+      metaXP -= cost;
+      if (form === 'cinnabarEgg') cinnabarEggLevel++;
+      else if (form === 'courierCat') courierCatLevel++;
+      recomputePlayerStats();
+      player.hp = Math.min(player.hp + FORM_LEVEL_STAT_BONUS, PLAYER_STATS.hpMax);
+      addToast('Leveled up! Now level ' + currentFormLevel() + '.');
+      renderMenuContent();
+    };
+  }
+  const evolveBtn = document.getElementById('evolveBtn');
+  if (evolveBtn) {
+    evolveBtn.onclick = () => {
+      if (inventory.stones.red < EVOLVE_STONE_COST || inventory.stones.purple < EVOLVE_STONE_COST) return;
+      inventory.stones.red -= EVOLVE_STONE_COST;
+      inventory.stones.purple -= EVOLVE_STONE_COST;
+      eggEvolved2 = true;
+      courierCatLevel = 1;
+      recomputePlayerStats();
+      player.hp = PLAYER_STATS.hpMax;
+      player.r = PLAYER_STATS.radius;
+      addToast('The Cinnabar Egg hatches into Courier Cat!');
+      renderMenuContent();
     };
   }
 }
@@ -1798,6 +2004,12 @@ function drawEnemy(e) {
   // Native art faces right, so mirror it when facing left, not the other way.
   if (e.facingLeft) ctx.scale(-1, 1);
   ctx.drawImage(enemySpriteImg, -ENEMY_SPRITE_W / 2, -ENEMY_SPRITE_H / 2, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+  if (e.def.colorTag === 'red') {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = 'rgba(210,30,30,0.55)';
+    ctx.fillRect(-ENEMY_SPRITE_W / 2, -ENEMY_SPRITE_H / 2, ENEMY_SPRITE_W, ENEMY_SPRITE_H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
   if (e.hitFlash > 0) {
     ctx.globalCompositeOperation = 'source-atop';
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
@@ -1887,6 +2099,17 @@ function drawWall(w) {
       ctx.lineTo(w.x + w.w * 0.7, w.y + w.h * 0.68);
       ctx.stroke();
     }
+  } else if (w.visual === 'tree') {
+    const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+    ctx.fillStyle = '#4a3524';
+    ctx.fillRect(cx - w.w * 0.08, cy + w.h * 0.1, w.w * 0.16, w.h * 0.4);
+    ctx.fillStyle = '#2f4a22';
+    ctx.beginPath();
+    ctx.arc(cx, cy - w.h * 0.05, Math.min(w.w, w.h) * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#1c2e14';
+    ctx.lineWidth = 2;
+    ctx.stroke();
   } else {
     ctx.fillStyle = '#4a4f42';
     ctx.fillRect(w.x, w.y, w.w, w.h);
@@ -1940,13 +2163,25 @@ function drawCampfire(c) {
 }
 
 function drawBagProp() {
-  if (!bagDropped) return;
+  if (!bagDropped || currentZoneId !== 'start') return;
   ctx.drawImage(bagSpriteImg, BAG_PROP.x - 15, BAG_PROP.y - 15, 30, 30);
   if (!activeDialogue && dist(player.x, player.y, BAG_PROP.x, BAG_PROP.y) < INTERACT_RANGE) {
     ctx.fillStyle = '#ffe27a';
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Press Enter', BAG_PROP.x, BAG_PROP.y - 22);
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawForestBagProp() {
+  if (forestBagCollected || currentZoneId !== 'forest') return;
+  ctx.drawImage(bagSpriteImg, FOREST_BAG_PROP.x - 15, FOREST_BAG_PROP.y - 15, 30, 30);
+  if (!activeDialogue && dist(player.x, player.y, FOREST_BAG_PROP.x, FOREST_BAG_PROP.y) < INTERACT_RANGE) {
+    ctx.fillStyle = '#ffe27a';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Press Enter', FOREST_BAG_PROP.x, FOREST_BAG_PROP.y - 22);
     ctx.textAlign = 'left';
   }
 }
@@ -2033,6 +2268,7 @@ function draw() {
   for (const npc of (ZONES[currentZoneId].npcs || [])) drawNpc(npc);
   if (currentZoneId === 'start' && (campEmergency === 'encounter' || campEmergency === 'fled')) drawNpc(medicCampNpc, false);
   drawBagProp();
+  drawForestBagProp();
   drawHealCutsceneMedic();
 
   for (const it of loot) {
@@ -2086,13 +2322,34 @@ function draw() {
   for (const e of enemies) if (e.hp > 0) drawEnemy(e);
   if (wildDoge && wildDoge.hp > 0) drawWildDoge(wildDoge);
 
+  const playerForm = getPlayerForm();
+  let formSpriteImg, formNativeW, formNativeH, formTint;
+  if (playerForm === 'cinnabarEgg') {
+    formSpriteImg = cinnabarEggSpriteImg; formNativeW = 20; formNativeH = 23; formTint = null;
+  } else if (playerForm === 'courierCat') {
+    formSpriteImg = courierCatSpriteImg; formNativeW = 23; formNativeH = 24; formTint = 'rgba(255,180,40,0.45)';
+  } else {
+    formSpriteImg = catSpriteImg; formNativeW = 23; formNativeH = 24; formTint = null;
+  }
   const spriteScale = 2;
-  const spriteW = 23 * spriteScale, spriteH = 24 * spriteScale;
+  const spriteW = formNativeW * spriteScale, spriteH = formNativeH * spriteScale;
   const facingLeft = Math.cos(player.facing) < 0;
   ctx.save();
   ctx.translate(player.x, player.y);
   if (facingLeft) ctx.scale(-1, 1);
-  ctx.drawImage(catSpriteImg, -spriteW / 2, -spriteH / 2, spriteW, spriteH);
+  ctx.drawImage(formSpriteImg, -spriteW / 2, -spriteH / 2, spriteW, spriteH);
+  if (formTint) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = formTint;
+    ctx.fillRect(-spriteW / 2, -spriteH / 2, spriteW, spriteH);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (playerForm === 'courierCat' && player.immuneTimer > 0) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = 'rgba(120,220,255,0.55)';
+    ctx.fillRect(-spriteW / 2, -spriteH / 2, spriteW, spriteH);
+    ctx.globalCompositeOperation = 'source-over';
+  }
   if (player.hitFlash > 0) {
     ctx.globalCompositeOperation = 'source-atop';
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
@@ -2101,12 +2358,14 @@ function draw() {
   }
   ctx.restore();
 
-  ctx.beginPath();
-  ctx.moveTo(player.x + Math.cos(player.facing) * (spriteH / 2 - 4), player.y + Math.sin(player.facing) * (spriteH / 2 - 4));
-  ctx.lineTo(player.x + Math.cos(player.facing) * (spriteH / 2 + 10), player.y + Math.sin(player.facing) * (spriteH / 2 + 10));
-  ctx.strokeStyle = '#1c1c1c';
-  ctx.lineWidth = 3;
-  ctx.stroke();
+  if (PLAYER_STATS.atkShape === 'line') {
+    ctx.beginPath();
+    ctx.moveTo(player.x + Math.cos(player.facing) * (spriteH / 2 - 4), player.y + Math.sin(player.facing) * (spriteH / 2 - 4));
+    ctx.lineTo(player.x + Math.cos(player.facing) * (spriteH / 2 + 10), player.y + Math.sin(player.facing) * (spriteH / 2 + 10));
+    ctx.strokeStyle = '#1c1c1c';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
 
   for (const pt of particles) {
     ctx.globalAlpha = clamp(pt.life / pt.maxLife, 0, 1);
