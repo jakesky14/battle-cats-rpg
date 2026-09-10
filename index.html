@@ -327,9 +327,9 @@ const eggSpriteImg = new Image();
 eggSpriteImg.src = EGG_SPRITE_SRC;
 const cinnabarEggSpriteImg = new Image();
 cinnabarEggSpriteImg.src = CINNABAR_EGG_SPRITE_SRC;
-// Courier Cat has no custom art yet — reuses Researcher Cat's sprite with a
-// golden tint (see drawPlayer) as a placeholder for its evolved form.
-const courierCatSpriteImg = catSpriteImg;
+const COURIER_CAT_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACkAAAAfCAYAAAB6Q+RGAAABzklEQVR4nM2YQa7EIAhA5adn66Y9Sw/Ts9hNL8cPpnSIA6ijTUpiOgXFJ6A1E8I7Ba+W5C+8TzBXQHgx3CUAlYOhYEOljzdO85Mkxngr13VtSre2SkRMaguw1q8JKN+Lji4a1PSKDY3+FiDGGHGe59RyXc2C0Wk5EDr9TJ8Ew43eCYwBWefVDKdTFQCgDvfTErKLcnBrT0sv2SbDN4oJSgDFflpEGYzh9n1Pv/m5bdttn1zPToRqBL7h00mQR5HAJJQ2yODrAzRAE+Q8z7fiPE8zzTxGRvKmqqnFWj1eOgkro0aQChgvKMkkI1dRW+YCsCPyMmqanb8WwyZs3eVsNgfmX5wWuIadrQlkLZQgIQekia3JWZ+fkeD0/3EhHx/exvE2iQQlKW2mLN1NItNdFXoNCB+oYSnuYU4iUyVhrE8idKb2J0gNgMHyOn4qutqyh3nH70V012QzADXvYgrXzu4tATXdNPlxHOn3sizqJNKuCcOzfXStpssmC19I5bt2ufX6izHjIEuTkWjP6CyuB1JLNwBAs0O8jqQ8zVwWPVJ1n8wvB9bxAn7dwdOHOTTCoHeGDjknR3xvwzg/7j8TXY6DXzJN8vR/QbJ4f57rH+wcsX2iD62yAAAAAElFTkSuQmCC';
+const courierCatSpriteImg = new Image();
+courierCatSpriteImg.src = COURIER_CAT_SPRITE_SRC;
 const enemySpriteImg = new Image();
 enemySpriteImg.src = ENEMY_SPRITE_SRC;
 const wildDogeSpriteImg = new Image();
@@ -496,18 +496,53 @@ const ZONES = {
             ],
       },
     ],
+    // No exits — this campsite is the intro area only. Once the retreat
+    // cutscene ends the story moves on to the village and never returns here.
+    exits: [],
+  },
+  // The village the Cinnabar Egg wakes up in after the retreat, and the hub
+  // connecting the game's three regions: the Hidden Forest of Gapra (west/
+  // northwest), Ashvini Desert (south/southeast/southwest), and Jinfore
+  // Volcano (northeast).
+  village: {
+    name: 'The Village',
+    worldW: 2000, worldH: 2000,
+    playerStart: { x: 1000, y: 1000 },
+    walls: [
+      { x: 650, y: 650, w: 70, h: 60, visual: 'house' },
+      { x: 950, y: 600, w: 70, h: 60, visual: 'house' },
+      { x: 1250, y: 650, w: 70, h: 60, visual: 'house' },
+      { x: 1300, y: 950, w: 70, h: 60, visual: 'house' },
+      { x: 1250, y: 1250, w: 70, h: 60, visual: 'house' },
+      { x: 950, y: 1300, w: 70, h: 60, visual: 'house' },
+      { x: 650, y: 1250, w: 70, h: 60, visual: 'house' },
+      { x: 600, y: 950, w: 70, h: 60, visual: 'house' },
+    ],
+    paths: [
+      { points: [[1000, 1000], [1000, 80]], width: 26 },
+      { points: [[1000, 1000], [80, 900]], width: 26 },
+      { points: [[1000, 1000], [1000, 1950]], width: 26 },
+    ],
+    enemySpawns: [],
+    npcs: [],
     exits: [
-      { x: 20, y: 850, w: 60, h: 200, toZone: 'forest', toX: 300, toY: 1500, label: 'Into the Forest' },
+      { x: 20, y: 800, w: 60, h: 200, toZone: 'gapraForest', toX: 3700, toY: 1500, label: 'To the Hidden Forest of Gapra' },
+      { x: 900, y: 1920, w: 200, h: 60, toZone: 'ashviniDesert', toX: 1800, toY: 150, label: 'To Ashvini Desert' },
+      { x: 1500, y: 20, w: 200, h: 60, toZone: 'jinforeVolcano', toX: 150, toY: 1300, label: 'To Jinfore Volcano' },
     ],
   },
-  // Whisperwood Forest: reached after the camp-emergency retreat, while
-  // playing as the Cinnabar Egg. Open plains on the west and east sides,
+  // The Hidden Forest of Gapra: open plains on the west and east sides,
   // separated by a dense woodland maze hiding a clearing where Researcher
-  // Cat's dropped bag (and its Behemoth Stones) ended up.
-  forest: {
-    name: 'Whisperwood Forest',
+  // Cat's dropped bag (and its Behemoth Stones) ended up. Entered from the
+  // village on its east edge.
+  gapraForest: {
+    name: 'The Hidden Forest of Gapra',
     worldW: 4000, worldH: 3000,
-    playerStart: { x: 300, y: 1500 },
+    groundColor: '#3a5a2a',
+    playerStart: { x: 3700, y: 1500 },
+    rivers: [
+      { points: [[3300, 0], [2600, 900], [2700, 1700], [2100, 2400], [2200, 3000]], width: 60 },
+    ],
     walls: [
       // sparse decorative trees scattered across the open plains
       { x: 700, y: 700, w: 80, h: 80, visual: 'tree' },
@@ -545,7 +580,64 @@ const ZONES = {
     ],
     npcs: [],
     exits: [
-      { x: 20, y: 1420, w: 60, h: 160, toZone: 'start', toX: 100, toY: 900, label: 'Back to Campsite' },
+      { x: 3920, y: 1420, w: 60, h: 160, toZone: 'village', toX: 120, toY: 900, label: 'Back to the Village' },
+    ],
+  },
+  // Ashvini Desert: south, southeast and southwest of the village. Sparse,
+  // sun-bleached wasteland with a cluster of old ruins.
+  ashviniDesert: {
+    name: 'Ashvini Desert',
+    worldW: 3600, worldH: 2600,
+    groundColor: '#b89a67',
+    playerStart: { x: 1800, y: 150 },
+    walls: [
+      { x: 900, y: 500, w: 70, h: 70, visual: 'deadtree' },
+      { x: 2600, y: 400, w: 70, h: 70, visual: 'deadtree' },
+      { x: 500, y: 1200, w: 70, h: 70, visual: 'deadtree' },
+      { x: 3100, y: 1400, w: 70, h: 70, visual: 'deadtree' },
+      { x: 1600, y: 2200, w: 70, h: 70, visual: 'deadtree' },
+      { x: 2400, y: 2000, w: 70, h: 70, visual: 'rock' },
+      { x: 700, y: 2100, w: 90, h: 70, visual: 'rock' },
+      { x: 3200, y: 700, w: 90, h: 70, visual: 'rock' },
+      // a small ruined structure
+      { x: 950, y: 1750, w: 60, h: 100, visual: 'ruins' },
+      { x: 1080, y: 1700, w: 120, h: 60, visual: 'ruins' },
+      { x: 1080, y: 1850, w: 120, h: 60, visual: 'ruins' },
+    ],
+    enemySpawns: [
+      { x: 1200, y: 800 }, { x: 2300, y: 900 }, { x: 700, y: 1700 },
+      { x: 2900, y: 1900 }, { x: 1800, y: 1500 }, { x: 2200, y: 2300 },
+    ],
+    npcs: [],
+    exits: [
+      { x: 1770, y: 20, w: 200, h: 60, toZone: 'village', toX: 1000, toY: 1870, label: 'Back to the Village' },
+    ],
+  },
+  // Jinfore Volcano: northeast of the village. Ashen, rocky ground dotted
+  // with glowing vents.
+  jinforeVolcano: {
+    name: 'Jinfore Volcano',
+    worldW: 3600, worldH: 2600,
+    groundColor: '#453531',
+    playerStart: { x: 150, y: 1300 },
+    walls: [
+      { x: 900, y: 600, w: 80, h: 80, visual: 'rock' },
+      { x: 1500, y: 900, w: 60, h: 60, visual: 'lava' },
+      { x: 2200, y: 500, w: 90, h: 90, visual: 'rock' },
+      { x: 2600, y: 1100, w: 60, h: 60, visual: 'lava' },
+      { x: 1800, y: 1600, w: 90, h: 90, visual: 'rock' },
+      { x: 1100, y: 1900, w: 60, h: 60, visual: 'lava' },
+      { x: 2800, y: 1900, w: 80, h: 80, visual: 'rock' },
+      { x: 700, y: 2200, w: 60, h: 60, visual: 'lava' },
+      { x: 3100, y: 700, w: 90, h: 90, visual: 'rock' },
+    ],
+    enemySpawns: [
+      { x: 1000, y: 1000 }, { x: 2000, y: 800 }, { x: 2600, y: 1700 },
+      { x: 1500, y: 2100 }, { x: 3000, y: 1300 }, { x: 700, y: 1700 },
+    ],
+    npcs: [],
+    exits: [
+      { x: 20, y: 1220, w: 60, h: 160, toZone: 'village', toX: 1600, toY: 130, label: 'Back to the Village' },
     ],
   },
 };
@@ -1042,7 +1134,7 @@ function getNearestInteractable() {
     const d = dist(player.x, player.y, BAG_PROP.x, BAG_PROP.y);
     if (d < bestDist) { bestDist = d; best = { type: 'bag', target: BAG_PROP }; }
   }
-  if (currentZoneId === 'forest' && !forestBagCollected) {
+  if (currentZoneId === 'gapraForest' && !forestBagCollected) {
     const d = dist(player.x, player.y, FOREST_BAG_PROP.x, FOREST_BAG_PROP.y);
     if (d < bestDist) { bestDist = d; best = { type: 'forestBag', target: FOREST_BAG_PROP }; }
   }
@@ -1145,19 +1237,20 @@ function finishRetreatCutscene() {
   campEmergency = 'fled';
   bagDropped = true;
   wildDoge = null;
-  // The player now controls the Cinnabar Egg (see getPlayerForm()), lost in
-  // the forest — a new zone, reached here instead of returning to camp.
+  // The player now controls the Cinnabar Egg (see getPlayerForm()). The
+  // campsite is never seen again — the story picks up in the village, hub
+  // of the three regions (Gapra Forest, Ashvini Desert, Jinfore Volcano).
   cinnabarEggLevel = 1;
   recomputePlayerStats();
   player.hp = PLAYER_STATS.hpMax;
   player.r = PLAYER_STATS.radius;
   player.immuneTimer = 0;
-  respawnZone = 'forest';
-  respawnPoint = { x: ZONES.forest.playerStart.x, y: ZONES.forest.playerStart.y };
-  loadZone('forest', respawnPoint.x, respawnPoint.y);
+  respawnZone = 'village';
+  respawnPoint = { x: ZONES.village.playerStart.x, y: ZONES.village.playerStart.y };
+  loadZone('village', respawnPoint.x, respawnPoint.y);
   screen = 'game';
   updateCamera();
-  addToast("Researcher Cat lost the bag and the egg in the forest! You are now the Cinnabar Egg.");
+  addToast("Researcher Cat lost the bag and the egg in the forest! You wake up as the Cinnabar Egg in a small village.");
 }
 
 // Medic Cat's heal-at-tent sequence: he steps out of the tent, the screen
@@ -2068,6 +2161,22 @@ function drawWildDoge(wd) {
   ctx.textAlign = 'left';
 }
 
+// Purely decorative rivers/paths — non-blocking, drawn under everything else.
+function drawPolylines(list, color) {
+  if (!list) return;
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const line of list) {
+    ctx.lineWidth = line.width;
+    ctx.beginPath();
+    line.points.forEach(([x, y], i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  ctx.lineJoin = 'miter';
+}
+
 function drawWall(w) {
   if (w.visual === 'void') {
     ctx.fillStyle = '#10140d';
@@ -2108,6 +2217,67 @@ function drawWall(w) {
     ctx.arc(cx, cy - w.h * 0.05, Math.min(w.w, w.h) * 0.42, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#1c2e14';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else if (w.visual === 'house') {
+    ctx.fillStyle = '#8a7256';
+    ctx.fillRect(w.x, w.y + w.h * 0.35, w.w, w.h * 0.65);
+    ctx.strokeStyle = '#3a2f22';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w.x, w.y + w.h * 0.35, w.w, w.h * 0.65);
+    ctx.fillStyle = '#5a4636';
+    ctx.beginPath();
+    ctx.moveTo(w.x - 6, w.y + w.h * 0.35);
+    ctx.lineTo(w.x + w.w / 2, w.y - 8);
+    ctx.lineTo(w.x + w.w + 6, w.y + w.h * 0.35);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#2e241a';
+    ctx.stroke();
+    ctx.fillStyle = '#3a2f22';
+    ctx.fillRect(w.x + w.w * 0.4, w.y + w.h * 0.6, w.w * 0.2, w.h * 0.4);
+  } else if (w.visual === 'deadtree') {
+    const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+    ctx.strokeStyle = '#5a4a3a';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, w.y + w.h); ctx.lineTo(cx, cy - w.h * 0.15);
+    ctx.moveTo(cx, cy); ctx.lineTo(cx - w.w * 0.32, cy - w.h * 0.32);
+    ctx.moveTo(cx, cy - w.h * 0.08); ctx.lineTo(cx + w.w * 0.32, cy - w.h * 0.4);
+    ctx.moveTo(cx, cy - w.h * 0.2); ctx.lineTo(cx - w.w * 0.2, cy - w.h * 0.48);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  } else if (w.visual === 'ruins') {
+    ctx.fillStyle = '#8f8a80';
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+    ctx.strokeStyle = '#4d4a44';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+    ctx.strokeStyle = 'rgba(70,66,58,0.6)';
+    ctx.beginPath();
+    ctx.moveTo(w.x + w.w * 0.3, w.y); ctx.lineTo(w.x + w.w * 0.2, w.y + w.h);
+    ctx.moveTo(w.x + w.w * 0.65, w.y); ctx.lineTo(w.x + w.w * 0.75, w.y + w.h);
+    ctx.stroke();
+  } else if (w.visual === 'lava') {
+    const cx = w.x + w.w / 2, cy = w.y + w.h / 2, r = Math.min(w.w, w.h) / 2;
+    ctx.fillStyle = '#2e2622';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff6a1f';
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd35c';
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.28, 0, Math.PI * 2); ctx.fill();
+  } else if (w.visual === 'rock') {
+    ctx.fillStyle = '#6b645c';
+    ctx.beginPath();
+    ctx.moveTo(w.x, w.y + w.h);
+    ctx.lineTo(w.x + w.w * 0.15, w.y + w.h * 0.25);
+    ctx.lineTo(w.x + w.w * 0.55, w.y);
+    ctx.lineTo(w.x + w.w, w.y + w.h * 0.35);
+    ctx.lineTo(w.x + w.w, w.y + w.h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#3d3934';
     ctx.lineWidth = 2;
     ctx.stroke();
   } else {
@@ -2175,7 +2345,7 @@ function drawBagProp() {
 }
 
 function drawForestBagProp() {
-  if (forestBagCollected || currentZoneId !== 'forest') return;
+  if (forestBagCollected || currentZoneId !== 'gapraForest') return;
   ctx.drawImage(bagSpriteImg, FOREST_BAG_PROP.x - 15, FOREST_BAG_PROP.y - 15, 30, 30);
   if (!activeDialogue && dist(player.x, player.y, FOREST_BAG_PROP.x, FOREST_BAG_PROP.y) < INTERACT_RANGE) {
     ctx.fillStyle = '#ffe27a';
@@ -2222,6 +2392,14 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
   ctx.save();
   ctx.translate(-camera.x, -camera.y);
+
+  const zoneGroundColor = ZONES[currentZoneId].groundColor;
+  if (zoneGroundColor) {
+    ctx.fillStyle = zoneGroundColor;
+    ctx.fillRect(0, 0, worldW, worldH);
+  }
+  drawPolylines(ZONES[currentZoneId].paths, 'rgba(216,200,150,0.65)');
+  drawPolylines(ZONES[currentZoneId].rivers, 'rgba(107,163,199,0.9)');
 
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
@@ -2327,7 +2505,7 @@ function draw() {
   if (playerForm === 'cinnabarEgg') {
     formSpriteImg = cinnabarEggSpriteImg; formNativeW = 20; formNativeH = 23; formTint = null;
   } else if (playerForm === 'courierCat') {
-    formSpriteImg = courierCatSpriteImg; formNativeW = 23; formNativeH = 24; formTint = 'rgba(255,180,40,0.45)';
+    formSpriteImg = courierCatSpriteImg; formNativeW = 41; formNativeH = 31; formTint = null;
   } else {
     formSpriteImg = catSpriteImg; formNativeW = 23; formNativeH = 24; formTint = null;
   }
