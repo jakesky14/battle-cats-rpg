@@ -35,7 +35,6 @@
   }
   #topRight { text-align: right; }
   #levelXp { text-align: right; font-size: 14px; color: #4aa3ff; font-weight: bold; margin-top: 28px; margin-bottom: 6px; }
-  #enemyHp { text-align: right; }
   .bar-bg {
     width: 220px;
     height: 14px;
@@ -45,13 +44,11 @@
     overflow: hidden;
     margin-top: 3px;
   }
-  #enemyHp .bar-bg { margin-left: auto; }
   .bar-fill {
     height: 100%;
     transition: width 0.1s linear;
   }
   #playerHp .bar-fill { background: #4aa3ff; }
-  #enemyHp .bar-fill { background: #d63030; }
   #cooldowns {
     position: absolute;
     bottom: 10px;
@@ -250,7 +247,6 @@
     <div id="playerHp">Player HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
     <div id="topRight">
       <div id="levelXp">XP: 0</div>
-      <div id="enemyHp">Enemy HP<div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></div>
     </div>
   </div>
   <div id="cooldowns">
@@ -370,8 +366,6 @@ const medicCatSpriteImg = new Image();
 medicCatSpriteImg.src = MEDIC_CAT_SPRITE_SRC;
 
 const playerHpFill = document.querySelector('#playerHp .bar-fill');
-const enemyHpEl = document.getElementById('enemyHp');
-const enemyHpFill = document.querySelector('#enemyHp .bar-fill');
 const levelXpEl = document.getElementById('levelXp');
 const atkCdFill = document.getElementById('atkCd');
 const dashCdFill = document.getElementById('dashCd');
@@ -786,6 +780,7 @@ function openSaveLoadMenu() {
     choices: [
       { label: 'SAVE', onSelect: () => openSaveMenu() },
       { label: 'LOAD', onSelect: () => openLoadMenu() },
+      { label: 'DELETE', onSelect: () => openDeleteMenu() },
     ],
   };
 }
@@ -840,6 +835,29 @@ function openLoadMenu() {
   activeDialogue = {
     npc: { name: 'Behemoth Base' },
     ...buildDialogueText([{ text: 'Choose a file to load:' }]),
+    revealLength: 0, charTimer: 0, done: false,
+    choice: true, choicesRendered: false, choices,
+  };
+}
+function openDeleteMenu() {
+  const choices = [];
+  for (let slot = 1; slot <= SAVE_SLOT_COUNT; slot++) {
+    const existing = readSaveSlot(slot);
+    const label = existing
+      ? `Slot ${slot}: Lv ${existing.eggLevel} · ${(existing.metaXP || 0).toLocaleString()} XP`
+      : `Slot ${slot}: Empty`;
+    choices.push({
+      label,
+      onSelect: () => {
+        if (!existing) { addToast('Slot ' + slot + ' is already empty!'); return; }
+        try { localStorage.removeItem(SAVE_KEY_PREFIX + slot); } catch (e) { /* storage unavailable */ }
+        addToast('Deleted Slot ' + slot + '!');
+      },
+    });
+  }
+  activeDialogue = {
+    npc: { name: 'Behemoth Base' },
+    ...buildDialogueText([{ text: 'Choose a file to delete:' }]),
     revealLength: 0, charTimer: 0, done: false,
     choice: true, choicesRendered: false, choices,
   };
@@ -2102,15 +2120,6 @@ function draw() {
   ctx.restore();
 
   playerHpFill.style.width = (Math.max(0, player.hp) / PLAYER_STATS.hpMax * 100) + '%';
-  if (wildDoge && wildDoge.hp > 0) {
-    enemyHpEl.style.display = '';
-    enemyHpEl.childNodes[0].textContent = 'Wild Doge HP';
-    enemyHpFill.style.width = (Math.max(0, wildDoge.hp) / WILD_DOGE_DEF.hpMax * 100) + '%';
-  } else {
-    enemyHpEl.style.display = enemies.length === 1 ? '' : 'none';
-    enemyHpEl.childNodes[0].textContent = 'Enemy HP';
-    if (enemies.length === 1) enemyHpFill.style.width = (Math.max(0, enemies[0].hp) / ENEMY_DEF.hpMax * 100) + '%';
-  }
   levelXpEl.textContent = 'XP: ' + metaXP.toLocaleString();
   atkCdFill.style.width = (100 - clamp(player.atkCdTimer / PLAYER_STATS.atkCooldown, 0, 1) * 100) + '%';
   dashCdFill.style.width = (100 - clamp(player.dashCdTimer / PLAYER_STATS.dashCooldown, 0, 1) * 100) + '%';
