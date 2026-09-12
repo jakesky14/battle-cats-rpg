@@ -523,20 +523,34 @@ const ZONES = {
     name: 'The Village',
     worldW: 1400, worldH: 1400,
     playerStart: { x: 480, y: 1050 },
+    // Two elevated platforms per the reference tile art: a wooded rise in
+    // the northwest corner, and a raised shelf in the southeast holding
+    // three more houses. Both require a dash through their edge to reach
+    // (see platformPush) — normal walking treats them as solid.
+    platforms: [
+      { x: 0, y: 0, w: 220, h: 480 },
+      { x: 600, y: 1020, w: 800, h: 380 },
+    ],
     rivers: [
-      { points: [[900, 0], [860, 300], [880, 600], [820, 900], [850, 1400]], width: 60 },
+      { points: [[798, 0], [826, 210], [924, 350], [1050, 560], [1176, 700], [1260, 910], [1400, 1080]], width: 80 },
     ],
     paths: [
-      { points: [[50, 1350], [250, 1150], [400, 950], [480, 880]], width: 24 },
+      { points: [[50, 1350], [250, 1150], [400, 950], [500, 850]], width: 24 },
     ],
     walls: [
-      { x: 380, y: 780, w: 70, h: 60, visual: 'house' },
-      { x: 470, y: 750, w: 70, h: 60, visual: 'house' },
-      { x: 560, y: 800, w: 70, h: 60, visual: 'house' },
-      { x: 400, y: 880, w: 70, h: 60, visual: 'house' },
-      { x: 500, y: 900, w: 70, h: 60, visual: 'house' },
-      // Behemoth Base save point, north of the hamlet
-      { x: 350, y: 550, w: 70, h: 150, visual: 'behemothBase', interactable: 'save' },
+      // trees on the northwest platform
+      { x: 150, y: 150, w: 50, h: 50, visual: 'tree' },
+      { x: 38, y: 206, w: 50, h: 50, visual: 'tree' },
+      // three houses on regular ground, in the main cluster
+      { x: 504, y: 579, w: 70, h: 60, visual: 'house' },
+      { x: 800, y: 819, w: 80, h: 70, visual: 'house' },
+      { x: 415, y: 994, w: 65, h: 55, visual: 'house' },
+      // three smaller houses up on the southeast platform
+      { x: 1074, y: 1118, w: 50, h: 45, visual: 'house' },
+      { x: 1228, y: 1244, w: 50, h: 45, visual: 'house' },
+      { x: 952, y: 1270, w: 55, h: 50, visual: 'house' },
+      // Behemoth Base save point, clear of the platform to its east
+      { x: 250, y: 550, w: 70, h: 150, visual: 'behemothBase', interactable: 'save' },
     ],
     enemySpawns: [],
     npcs: [],
@@ -719,6 +733,22 @@ function circleRectPush(x, y, r, rect) {
   if (d === 0) return { x: x, y: y - r };
   return null;
 }
+// Like circleRectPush, but for elevated platforms: an entity whose center
+// has already crossed inside (e.g. by dashing through the edge) is left
+// alone instead of being shoved out — circleRectPush's zero-distance
+// fallback assumes "exactly on the closest point" means "stuck at a
+// boundary," which is wrong once you're standing well inside the rect.
+function platformPush(x, y, r, rect) {
+  const cx = clamp(x, rect.x, rect.x + rect.w);
+  const cy = clamp(y, rect.y, rect.y + rect.h);
+  const dx = x - cx, dy = y - cy;
+  const d = Math.hypot(dx, dy);
+  if (d < r && d > 0) {
+    const push = r - d;
+    return { x: x + (dx / d) * push, y: y + (dy / d) * push };
+  }
+  return null;
+}
 function circleOverlapsRect(x, y, r, rect) {
   const cx = clamp(x, rect.x, rect.x + rect.w);
   const cy = clamp(y, rect.y, rect.y + rect.h);
@@ -728,6 +758,14 @@ function resolveObstacles(entity) {
   for (const w of walls) {
     const res = circleRectPush(entity.x, entity.y, entity.r, w);
     if (res) { entity.x = res.x; entity.y = res.y; }
+  }
+  // Elevated platforms block normal movement, but dashing through their edge
+  // "climbs" onto them — enemies (which never dash) can never follow.
+  if (!entity.isDashing) {
+    for (const p of (ZONES[currentZoneId].platforms || [])) {
+      const res = platformPush(entity.x, entity.y, entity.r, p);
+      if (res) { entity.x = res.x; entity.y = res.y; }
+    }
   }
   entity.x = clamp(entity.x, entity.r, worldW - entity.r);
   entity.y = clamp(entity.y, entity.r, worldH - entity.r);
@@ -2203,6 +2241,32 @@ function drawPolylines(list, color) {
   ctx.lineJoin = 'miter';
 }
 
+// Elevated platforms: solid ground you can only climb onto by dashing
+// through their edge (see resolveObstacles/platformPush) — drawn as a
+// raised dark-green patch with a lighter "lip" along the top-left edge to
+// read as higher ground.
+function drawPlatforms(list) {
+  if (!list) return;
+  for (const p of list) {
+    ctx.fillStyle = '#2c7a3d';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = 'rgba(150,220,160,0.55)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y + p.h);
+    ctx.lineTo(p.x, p.y);
+    ctx.lineTo(p.x + p.w, p.y);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(10,40,15,0.5)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(p.x + p.w, p.y);
+    ctx.lineTo(p.x + p.w, p.y + p.h);
+    ctx.lineTo(p.x, p.y + p.h);
+    ctx.stroke();
+  }
+}
+
 function drawWall(w) {
   if (w.visual === 'void') {
     ctx.fillStyle = '#10140d';
@@ -2424,6 +2488,7 @@ function draw() {
     ctx.fillStyle = zoneGroundColor;
     ctx.fillRect(0, 0, worldW, worldH);
   }
+  drawPlatforms(ZONES[currentZoneId].platforms);
   drawPolylines(ZONES[currentZoneId].paths, 'rgba(216,200,150,0.65)');
   drawPolylines(ZONES[currentZoneId].rivers, 'rgba(107,163,199,0.9)');
 
